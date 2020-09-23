@@ -262,3 +262,15 @@ class Config:
         #
         # Only COSMO implemented
         implicit_solvation_type = 'cosmo'
+
+    class PSI4:
+        #----------------------------------------------------------------------
+        # Parameters for psi4                           http://www.psicode.org/
+        #
+        # path can be unset and will be assigned if it can be found in $PATH
+        path = None
+        #
+        keywords = KeywordsSet(opt=['PBE0-D3BJ', 'def2-SVP'],
+                               sp=['PBE0-D3BJ', 'def2-TZVP'])
+        # only gas phase for now
+
