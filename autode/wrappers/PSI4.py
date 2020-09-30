@@ -2,9 +2,11 @@ import numpy as np
 from autode.wrappers.base import ElectronicStructureMethod
 from autode.utils import run_external_monitored
 from autode.atoms import Atom
-form autode.config import Config
+from autode.config import Config
 from autode.log import logger
 from autode.utils import work_in_tmp_dir
+from autode.exceptions import AtomsNotFound
+import os
 
 
 class PSI4(ElectronicStructureMethod):
@@ -12,7 +14,7 @@ class PSI4(ElectronicStructureMethod):
     def generate_input(self, calc, molecule): # NEW
 
         with open(calc.input.filename, 'w') as inp_file:
-            print(f'# {calc.name}, invoked by autodE\n', file=inp_file)
+            print(f'# {calc.name}, invoked by autodE \n', file=inp_file)
 
             print(f'molecule  {molecule.name} ', '{\n')
             print(molecule.charge, molecule.mult, file=inp_file)
@@ -29,9 +31,9 @@ class PSI4(ElectronicStructureMethod):
         return None
 
     def get_input_filename(self,calc):
-        '''Input and output files can have arbitrary extensions for PSI4,
+        """Input and output files can have arbitrary extensions for PSI4,
         we will use .inp for input and .out for output. PSI4 is invoked by:
-        psi4 input_file.inp output_file.out'''
+        psi4 input_file.inp output_file.out"""
         return f'{calc.name}.inp'
 
     def get_output_filename(self,calc):
@@ -52,21 +54,21 @@ class PSI4(ElectronicStructureMethod):
 
     def calculation_terminated_normally(self,calc):
         for n_line, line in enumerate(reversed(calc.output.file_lines)):
-            if 'Psi4 exiting succesfully' in line:
+            if 'Psi4 exiting successfully' in line:
                 logger.info('PSI4 exited successfully.')
                 return True
             elif 'Psi4 encountered an error.' in line:
                 logger.info('PSI4 encountered an error.')
                 return False
             elif n_line > 10:
-                # Message saying whether the job was successfull is
+                # Message saying whether the job was successful is
                 # usually in the last few lines in PSI4.
                 logger.info('Do not know whether PSI4 exited successfully.')
                 return False
          return False
 
     def get_energy(self,calc):
-        '''Output is in Eh.'''
+        """Output is in Eh."""
         for line in reversed(calc.output.file_lines):
             if '@' in line and 'Final Energy' in line:
                 return float(line.split()[-1])
@@ -74,8 +76,8 @@ class PSI4(ElectronicStructureMethod):
         return None
 
     def get_zero_point_energy(self,calc):
-        '''frequency() has to be used in the psi4 input file in order
-        for this function to work. Output is in Eh.'''
+        """frequency() has to be used in the psi4 input file in order
+        for this function to work. Output is in Eh."""
         for line in reversed(calc.output.file_lines):
             if 'Total ZPE' in line and 'Electronic energy' in line:
                 return float(line.split()[-2])
@@ -83,8 +85,8 @@ class PSI4(ElectronicStructureMethod):
         return None
 
     def get_enthalpy(self,calc):
-        '''frequency() has to be used in the psi4 input file in order
-        for this function to work. Output is in Eh.'''
+        """frequency() has to be used in the psi4 input file in order
+        for this function to work. Output is in Eh."""
         for line in reversed(calc.output.file_lines):
             if 'Total H' in line and 'Enthalpy' in line:
                 return float(line.split()[-2])
@@ -92,8 +94,8 @@ class PSI4(ElectronicStructureMethod):
         raise None
 
     def get_free_energy(self,calc):
-        '''frequency() has to be used in the psi4 input file in order
-        for this function to work. Output is in Eh.'''
+        """frequency() has to be used in the psi4 input file in order
+        for this function to work. Output is in Eh."""
         for line in reversed(calc.output.file_lines):
             if 'Total G' in line and 'Free enthalpy' in line:
                 return float(line.split()[-2])
@@ -112,7 +114,7 @@ class PSI4(ElectronicStructureMethod):
         raise NotImplementedError
 
     def get_imaginary_freqs(self,calc): # NEW
-        '''frequencies() needs to be used in the psi4 input file.'''
+        """frequencies() needs to be used in the psi4 input file."""
         imaginary_frequencies = []
 
         for line in calc.output.file_lines:
@@ -160,7 +162,7 @@ class PSI4(ElectronicStructureMethod):
         raise NotImplementedError
 
     def get_gradients(self,calc): # NEW
-        '''optimise() needs to be used in the psi4 input file.'''
+        """optimise() needs to be used in the psi4 input file."""
         gradients = []
         gradient_section = False
         line_in_section = 0
