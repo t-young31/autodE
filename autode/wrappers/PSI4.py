@@ -1,6 +1,7 @@
 import numpy as np
+from autode.utils import run_external
 from autode.wrappers.base import ElectronicStructureMethod
-from autode.utils import run_external_monitored
+from autode.exceptions import UnsuppportedCalculationInput
 from autode.atoms import Atom
 from autode.config import Config
 from autode.log import logger
@@ -9,12 +10,43 @@ from autode.exceptions import AtomsNotFound
 import os
 
 
+def add_solvent_keyword(calc_input, implicit_solv_type):
+    """Will raine UnsupportedCalculationInput as solvent is not
+       implemented for psi4"""
+
+    if implicit_solv_type.lower() not in [calc_input.keywords.sp]:
+        raise UnsuppportedCalculationInput
+
+    return
+
+
+def get_keywords(calc_input, molecule, implicit_solvation_type):
+    """Modify the keywords for this calculation with the solvent + fix for
+    single atom optimisation calls"""
+
+    keywords = calc_input.keywords.copy()
+
+    for keyword in keywords:
+        if 'opt' in keyword.lower() and molecule.n_atoms == 1:
+            logger.warning('Can\'t optimise a single atom')
+            keywords.remove(keyword)  # ORCA defaults to a SP calc
+
+    if calc_input.solvent is not None:
+        add_solvent_keyword(calc_input, implicit_solvation_type)
+
+    return keywords
+
+
 class PSI4(ElectronicStructureMethod):
 
-    def generate_input(self, calc, molecule): # NEW
+    def generate_input(self, calc, molecule):
+
+        keywords = get_keywords(calc.input, molecule,
+                                self.implicit_solvation_type)
 
         with open(calc.input.filename, 'w') as inp_file:
             print(f'# {calc.name}, invoked by autodE \n', file=inp_file)
+            print(f'# keywords requested: {keywords}', file=inp_file)
 
             print(f'molecule  {molecule.name} ', '{\n')
             print(molecule.charge, molecule.mult, file=inp_file)
@@ -25,21 +57,21 @@ class PSI4(ElectronicStructureMethod):
                       file=inp_file)
             print('}\n')
             
-            print(f'set basis {calc_input.keywords.sp[1]}')
-            print(f'energy({calc_input.keywords.sp[0]})')
+            print(f'set basis {calc.input.keywords.sp[1]}')
+            print(f'energy({calc.input.keywords.sp[0]})')
 
         return None
 
-    def get_input_filename(self,calc):
+    def get_input_filename(self, calc):
         """Input and output files can have arbitrary extensions for PSI4,
         we will use .inp for input and .out for output. PSI4 is invoked by:
         psi4 input_file.inp output_file.out"""
         return f'{calc.name}.inp'
 
-    def get_output_filename(self,calc):
+    def get_output_filename(self, calc):
         return f'{calc.name}.out'
 
-    def execute(self,calc): # NEW
+    def execute(self, calc):
 
         @work_in_tmp_dir(filenames_to_copy=calc.input.get_input_filenames(),
                          kept_file_exts=('.inp', '.out', '.dat'))
@@ -52,7 +84,7 @@ class PSI4(ElectronicStructureMethod):
         execute_psi4()
         raise None
 
-    def calculation_terminated_normally(self,calc):
+    def calculation_terminated_normally(self, calc):
         for n_line, line in enumerate(reversed(calc.output.file_lines)):
             if 'Psi4 exiting successfully' in line:
                 logger.info('PSI4 exited successfully.')
@@ -65,9 +97,9 @@ class PSI4(ElectronicStructureMethod):
                 # usually in the last few lines in PSI4.
                 logger.info('Do not know whether PSI4 exited successfully.')
                 return False
-         return False
+        return False
 
-    def get_energy(self,calc):
+    def get_energy(self, calc):
         """Output is in Eh."""
         for line in reversed(calc.output.file_lines):
             if '@' in line and 'Final Energy' in line:
@@ -75,7 +107,7 @@ class PSI4(ElectronicStructureMethod):
         logger.info('Could not find energy from psi4.')
         return None
 
-    def get_zero_point_energy(self,calc):
+    def get_zero_point_energy(self, calc):
         """frequency() has to be used in the psi4 input file in order
         for this function to work. Output is in Eh."""
         for line in reversed(calc.output.file_lines):
@@ -84,7 +116,7 @@ class PSI4(ElectronicStructureMethod):
         logger.info('Could not find zero point energy from psi4.')
         return None
 
-    def get_enthalpy(self,calc):
+    def get_enthalpy(self, calc):
         """frequency() has to be used in the psi4 input file in order
         for this function to work. Output is in Eh."""
         for line in reversed(calc.output.file_lines):
@@ -93,7 +125,7 @@ class PSI4(ElectronicStructureMethod):
         logger.info('Could not find enthalpy in the psi4 output file.')
         raise None
 
-    def get_free_energy(self,calc):
+    def get_free_energy(self, calc):
         """frequency() has to be used in the psi4 input file in order
         for this function to work. Output is in Eh."""
         for line in reversed(calc.output.file_lines):
@@ -102,7 +134,7 @@ class PSI4(ElectronicStructureMethod):
         logger.info('Could not find Gibbs free energy from psi4.')
         return None
 
-    def optimisation_converged(self,calc):
+    def optimisation_converged(self, calc):
         for line in reversed(calc.output.file_lines):
             if 'Energy and wave function converged.' in line:
                 return True
@@ -110,10 +142,10 @@ class PSI4(ElectronicStructureMethod):
             # says energy did not converge - I do not know the keyword yet
         return False
 
-    def optimisation_nearly_converged(self,calc):
+    def optimisation_nearly_converged(self, calc):
         raise NotImplementedError
 
-    def get_imaginary_freqs(self,calc): # NEW
+    def get_imaginary_freqs(self, calc):
         """frequencies() needs to be used in the psi4 input file."""
         imaginary_frequencies = []
 
@@ -129,10 +161,10 @@ class PSI4(ElectronicStructureMethod):
             logger.info('Could not find any imaginary frequencies.')
             return None
 
-    def get_normal_mode_displacements(self,calc,mode_number):
+    def get_normal_mode_displacements(self, calc, mode_number):
         raise NotImplementedError
 
-    def get_final_atoms(self,calc):
+    def get_final_atoms(self, calc):
         atoms = []
         optimized = False
         section = False
@@ -152,16 +184,16 @@ class PSI4(ElectronicStructureMethod):
                 except ValueError:
                     pass
 
-            if optimised and 'Saving final (previous) structure.' in line:
+            if optimized and 'Saving final (previous) structure.' in line:
                 return atoms
 
         logger.info('Could not get the optimised geometry from psi4.')
         return AtomsNotFound
 
-    def get_atomic_charges(self,calc):
+    def get_atomic_charges(self, calc):
         raise NotImplementedError
 
-    def get_gradients(self,calc): # NEW
+    def get_gradients(self, calc):
         """optimise() needs to be used in the psi4 input file."""
         gradients = []
         gradient_section = False
@@ -178,7 +210,7 @@ class PSI4(ElectronicStructureMethod):
             if gradient_section:
                 line_in_section += 1
 
-            if line_in_section > 3 and line_in_section < (calc.n_atoms + 4):
+            if line_in_section > 3 and line_in_section < (calc.molecule.n_atoms+4):
                 x, y, z = line.split()[1:]
                 gradients.append(np.array([float(x), float(y), float(z)]))
 
@@ -188,5 +220,6 @@ class PSI4(ElectronicStructureMethod):
         super().__init__(name='psi4', path=Config.PSI4.path,
                          keywords_set=Config.PSI4.keywords,
                          implicit_solvation_type=Config.PSI4.implicit_solvation_type)
+
 
 psi4 = PSI4()

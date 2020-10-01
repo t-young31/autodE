@@ -43,7 +43,7 @@ class Solvent:
         return self.name == other.name and self.smiles == other.smiles
 
     def __init__(self, name, smiles, aliases, orca=None, g09=None, nwchem=None,
-                 xtb=None, mopac=None):
+                 xtb=None, mopac=None, psi4=None):
         """
         Solvent class. As electronic structure methods implement implicit
         solvation without a unique list of solvents there needs to be
@@ -76,6 +76,7 @@ class Solvent:
         self.nwchem = nwchem
         self.xtb = xtb
         self.mopac = mopac
+        self.psi4 = psi4
 
 
 class ExplicitSolvent(Solvent):

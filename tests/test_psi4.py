@@ -17,12 +17,12 @@ test_mol = Molecule(name='methane', smiles='C')
 method = PSI4()
 method.available = True
 
-sp_keywords = SinglePointKeywords(['', ''])
-opt_keywords = OptKeywords(['', ''])
+sp_keywords = SinglePointKeywords(['PBE0-D3BJ', 'def2-TZVP'])
+opt_keywords = OptKeywords(['PBE0-D3BJ', 'def2-SVP'])
 
 
 @testutils.work_in_zipped_dir(os.path.join(here, 'data', 'psi4.zip'))
-def test_orca_opt_calculation():
+def test_psi4_opt_calculation():
 
     methylchloride = Molecule(name='CH3Cl',
                               smiles='[H]C([H])(Cl)[H]',
@@ -77,7 +77,7 @@ def test_calc_bad_mol():
                     keywords=opt_keywords)
 
 
-def test_bad_orca_output():
+def test_bad_psi4_output():
 
     calc = Calculation(name='no_output', molecule=test_mol, method=method,
                        keywords=opt_keywords)
@@ -93,6 +93,22 @@ def test_bad_orca_output():
 
     calc.output_file_lines = None
     assert calc.terminated_normally() is False
+
+
+def test_solvation():
+    """Solvation not implemented for psi4"""
+
+    methane = Molecule(name='solvated_methane', smiles='C',
+                       solvent_name='water')
+
+    with pytest.raises(UnsuppportedCalculationInput):
+
+        # Should raise an unsupported calculation type, the only
+        # "supported" implicit solvation type is 'not_supported'
+        method.implicit_solvation_type = 'xxx'
+        calc = Calculation(name='broken_solvation', molecule=methane,
+                           method=method, keywords=sp_keywords)
+        calc.run()
 
 
 @testutils.work_in_zipped_dir(os.path.join(here, 'data', 'psi4.zip'))

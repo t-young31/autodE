@@ -273,4 +273,4 @@ class Config:
         keywords = KeywordsSet(opt=['PBE0-D3BJ', 'def2-SVP'],
                                sp=['PBE0-D3BJ', 'def2-TZVP'])
         # only gas phase for now
-
+        implicit_solvation_type = 'not_supported'
