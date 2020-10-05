@@ -9,45 +9,17 @@ from autode.utils import work_in_tmp_dir
 from autode.exceptions import AtomsNotFound
 import os
 
-
-def add_solvent_keyword(calc_input, implicit_solv_type):
-    """Will raine UnsupportedCalculationInput as solvent is not
-       implemented for psi4"""
-
-    if implicit_solv_type.lower() not in [calc_input.keywords.sp]:
-        raise UnsuppportedCalculationInput
-
-    return
-
-
-def get_keywords(calc_input, molecule, implicit_solvation_type):
-    """Modify the keywords for this calculation with the solvent + fix for
-    single atom optimisation calls"""
-
-    keywords = calc_input.keywords.copy()
-
-    for keyword in keywords:
-        if 'opt' in keyword.lower() and molecule.n_atoms == 1:
-            logger.warning('Can\'t optimise a single atom')
-            keywords.remove(keyword)  # ORCA defaults to a SP calc
-
-    if calc_input.solvent is not None:
-        add_solvent_keyword(calc_input, implicit_solvation_type)
-
-    return keywords
+sp_keywords = ['PBE0-D3BJ', 'def2-TZVP']
+opt_keywords = ['PBE0-D3BJ', 'def2-SVP']
 
 
 class PSI4(ElectronicStructureMethod):
 
     def generate_input(self, calc, molecule):
 
-        keywords = get_keywords(calc.input, molecule,
-                                self.implicit_solvation_type)
-
         with open(calc.input.filename, 'w') as inp_file:
             print(f'# {calc.name}, invoked by autodE \n', file=inp_file)
-            print(f'# keywords requested: {keywords}', file=inp_file)
-
+  
             print(f'molecule  {molecule.name} ', '{\n')
             print(molecule.charge, molecule.mult, file=inp_file)
 
@@ -56,9 +28,16 @@ class PSI4(ElectronicStructureMethod):
                 print(f'{atom.label:<3} {x:^12.8f} {y:^12.8f} {z:^12.8f}',
                       file=inp_file)
             print('}\n')
-            
-            print(f'set basis {calc.input.keywords.sp[1]}')
-            print(f'energy({calc.input.keywords.sp[0]})')
+
+            if calc.input.keywords.sp[1].lower() == sp_keywords[1]:
+                print(f'set basis {calc.input.keywords.sp[1]}')
+            else:
+                raise UnsuppportedCalculationInput
+
+            if calc.input.keywords.sp[0].lower() == sp_keywords[0]:
+                print(f'energy({calc.input.keywords.sp[0]})')
+            else:
+                raise UnsuppportedCalculationInput
 
         return None
 
