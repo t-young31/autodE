@@ -2,6 +2,7 @@ import numpy as np
 from autode.utils import run_external
 from autode.wrappers.base import ElectronicStructureMethod
 from autode.exceptions import UnsuppportedCalculationInput
+from autode.wrappers.keywords import SinglePointKeywords, OptKeywords
 from autode.atoms import Atom
 from autode.config import Config
 from autode.log import logger
@@ -92,13 +93,35 @@ class PSI4(ElectronicStructureMethod):
                       file=inp_file)
             print('}\n', file=inp_file)
 
+            # PSI4 required basis set declaration before method
+            basis_printed = False
             for keyword in calc.input.keywords:
                 if keyword.lower() in psi4_basis_sets:
                     print(f'set basis {keyword}', file=inp_file)
-                if keyword.lower() in psi4_functionals and isinstance(calc.input.keywords, SinglePointKeywords):
-                    print(f'energy({keyword})', file=inp_file)
-                if keyword.lower() in psi4_functionals and isinstance(calc.input.keywords, OptKeywords):
-                    print(f'optimize({keyword})', file=inp_file)
+                    basis_printed = True
+
+            if not basis_printed:
+                raise UnsuppportedCalculationInput('PSI4 calculation requires'
+                                                   ' a basis set')
+
+            method_printed = False
+            for keyword in calc.input.keywords:
+
+                if (keyword.lower() in psi4_functionals
+                        and isinstance(calc.input.keywords, SinglePointKeywords)):
+                    print(f'energy("{keyword}")', file=inp_file)
+                    method_printed = True
+
+                if (keyword.lower() in psi4_functionals
+                        and isinstance(calc.input.keywords, OptKeywords)):
+                    print(f'optimize("{keyword}")', file=inp_file)
+                    method_printed = True
+
+                # TODO Gradient and Hessian
+
+            if not method_printed:
+                raise UnsuppportedCalculationInput('PSI4 calculation requires'
+                                                   ' a method/dft functional')
 
         return None
 

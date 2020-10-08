@@ -270,7 +270,8 @@ class Config:
         # path can be unset and will be assigned if it can be found in $PATH
         path = None
         #
-        keywords = KeywordsSet(opt=['PBE0-D3BJ', 'def2-SVP'],
-                               sp=['PBE0-D3BJ', 'def2-TZVP'])
+        keywords = KeywordsSet(low_opt=['pbe-d3bj', 'dzp'],
+                               opt=['pbe0-d3bj', 'dzp'],
+                               sp=['pbe0-d3bj', 'tz2p'])
         # only gas phase for now
         implicit_solvation_type = 'not_supported'

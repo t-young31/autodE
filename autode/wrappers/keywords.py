@@ -48,6 +48,9 @@ class KeywordsSet:
 
 class Keywords:
 
+    def __len__(self):
+        return len(self.keyword_list)
+
     def __str__(self):
         return '_'.join(self.keyword_list)
 
