@@ -141,7 +141,8 @@ class PSI4(ElectronicStructureMethod):
         def execute_psi4():
             logger.info(f'Setting the number of OMP threads to {calc.n_cores}')
             os.environ['OMP_NUM_THREADS'] = str(calc.n_cores)
-            run_external(params=[calc.method.path, calc.input.filename],
+            run_external(params=[calc.method.path, calc.input.filename,
+                                 calc.output.filename],
                          output_filename=calc.output.filename)
 
         execute_psi4()
