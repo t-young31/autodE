@@ -83,14 +83,14 @@ class PSI4(ElectronicStructureMethod):
         with open(calc.input.filename, 'w') as inp_file:
             print(f'# {calc.name}, invoked by autodE \n', file=inp_file)
 
-            print(f'molecule  {molecule.name} ', '{\n')
+            print(f'molecule  {molecule.name} ', '{\n', file=inp_file)
             print(molecule.charge, molecule.mult, file=inp_file)
 
             for atom in molecule.atoms:
                 x, y, z = atom.coord
                 print(f'{atom.label:<3} {x:^12.8f} {y:^12.8f} {z:^12.8f}',
                       file=inp_file)
-            print('}\n')
+            print('}\n', file=inp_file)
 
             for keyword in calc.input.keywords:
                 if keyword.lower() in psi4_basis_sets:
@@ -122,7 +122,7 @@ class PSI4(ElectronicStructureMethod):
                          output_filename=calc.output.filename)
 
         execute_psi4()
-        raise None
+        return None
 
     def calculation_terminated_normally(self, calc):
         for n_line, line in enumerate(reversed(calc.output.file_lines)):

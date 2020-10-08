@@ -4,6 +4,7 @@ from autode.wrappers.MOPAC import MOPAC
 from autode.wrappers.NWChem import NWChem
 from autode.wrappers.ORCA import ORCA
 from autode.wrappers.XTB import XTB
+from autode.wrappers.PSI4 import PSI4
 from autode.config import Config
 from autode.exceptions import MethodUnavailable
 from autode.log import logger
@@ -14,7 +15,7 @@ orca and Gaussian09 which can perform DFT/WF theory calculations, low level meth
 are non ab-initio methods and are therefore considerably faster
 """
 
-high_level_method_names = ['orca', 'g09', 'g16', 'nwchem']
+high_level_method_names = ['orca', 'g09', 'g16', 'nwchem', 'psi4']
 low_level_method_names = ['xtb', 'mopac']
 
 
@@ -28,12 +29,13 @@ def get_hmethod():
     g09 = G09()
     nwchem = NWChem()
     g16 = G16()
+    psi4 = PSI4()
 
     if Config.hcode is not None:
         return get_defined_method(name=Config.hcode.lower(),
-                                  possibilities=[orca, g16, g09, nwchem])
+                                  possibilities=[orca, g16, g09, nwchem, psi4])
     else:
-        return get_first_available_method([orca, g16, g09, nwchem])
+        return get_first_available_method([orca, g16, g09, nwchem, psi4])
 
 
 def get_lmethod():
@@ -42,7 +44,7 @@ def get_lmethod():
     Returns:
         (autode.wrappers.base.ElectronicStructureMethod):
     """
-    all_methods = [XTB(), MOPAC(), ORCA(), G16(), G09(), NWChem()]
+    all_methods = [XTB(), MOPAC(), ORCA(), G16(), G09(), NWChem(), PSI4()]
 
     if Config.lcode is not None:
         return get_defined_method(name=Config.lcode.lower(),
