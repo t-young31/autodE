@@ -25,7 +25,7 @@ def get_solvent_name(molecule, method):
     Set the solvent keyword to use in the calculation given an QM method
 
     Arguments:
-        molecule (autode.species.Species)
+        molecule (autode.species.Species):
         method (autode.wrappers.base.ElectronicStructureMethod):
     """
 
