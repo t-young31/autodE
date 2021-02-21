@@ -1,10 +1,11 @@
 import pytest
 import autode as ade
 import numpy as np
-from autode.opt import dic
+from autode.opt import dic, opt, internals
+from autode.geom import are_coords_reasonable
 from scipy.optimize import minimize
 
-methane = ade.Molecule('methane.xyz')
+methane = ade.Molecule(smiles='C')
 
 
 def test_ic_base():
@@ -23,11 +24,11 @@ def test_inverse_dist_prim():
 
     x = methane.coordinates
 
-    primitives = dic.PIC(x)
+    primitives = internals.PIC(x)
 
     for i in range(methane.n_atoms):
         for j in range(i+1, methane.n_atoms):
-            primitives.append(dic.InverseDistance(x=x, idx_i=i, idx_j=j))
+            primitives.append(internals.InverseDistance(x=x, idx_i=i, idx_j=j))
 
     assert np.isclose(primitives[0].value,
                       1.0 / np.linalg.norm(x[0] - x[1]))
@@ -63,7 +64,7 @@ def test_inverse_dist_prim():
     assert np.isclose(dq_dx, num_dq_dx, atol=1E-5)
 
 
-def test_inverse_dist_dic():
+def test_inverse_dist_dic_methane():
 
     coords = dic.DIC(x=methane.coordinates)
 
@@ -95,22 +96,44 @@ def test_inverse_dist_dic():
 
     coords.s = new_s
     new_methane = methane.copy()
+    new_methane.coordinates = coords.x
 
-    for i, coord in enumerate(coords.x):
-        new_methane.atoms[i].coord = coord
-
-    new_methane.print_xyz_file()
+    assert np.sqrt(np.average(new_methane.coordinates -
+                              methane.coordinates)**2) < 1E-1
 
 
-"""
+def test_inverse_dist_dic_ethane():
+
+    ethane = ade.Molecule(smiles='CC')
+    # ethane.print_xyz_file()
+
+    coords = dic.DIC(x=ethane.coordinates)
+
+    new_s = coords.s.copy()
+    new_s[0] += 0.1
+
+    coords.s = new_s
+    new_mol = ethane.copy()
+    new_mol.coordinates = coords.x
+    # new_mol.print_xyz_file(filename='tmp.xyz')
+
+    assert np.sqrt(np.average(new_mol.coordinates - ethane.coordinates)**2) < 1E-1
+
+
 def test_dic_opt():
 
-    water = ade.Molecule(smiles='O')
-    coords = dic.DIC(water.coordinates)
+    mol = ade.Molecule(smiles='C')
+    coords = dic.DIC(mol.coordinates)
 
-    result = minimize(fun=energy,
-                      x0=coords.s,      # s
-                      args=(water, method),
-                      method='L-BFGS',
-                      jac=gradient)             # g^int
-"""
+    xtb = ade.methods.XTB()
+
+    result = minimize(fun=opt.energy,
+                      x0=coords.s,                  # s
+                      args=(mol, xtb, coords),
+                      method='BFGS',
+                      options={'gtol': 1E-3},
+                      jac=opt.gradient)             # g^int
+    # print(result)
+
+    assert result.success
+    assert are_coords_reasonable(mol.coordinates)

@@ -324,6 +324,9 @@ class XTB(ElectronicStructureMethod):
                        file=new_grad_file) for line in gradients]
             os.remove('gradient')
 
+        if f'{calc.name}_xtb.grad' not in calc.output.additional_filenames:
+            calc.output.additional_filenames.append(f'{calc.name}_xtb.grad')
+
         # Convert from Ha a0^-1 to Ha A-1
         gradients = [grad / Constants.a02ang for grad in gradients]
         return np.array(gradients)

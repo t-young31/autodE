@@ -356,6 +356,7 @@ class Calculation:
         filenames = self.input.get_input_filenames()
         if everything:
             filenames.append(self.output.filename)
+            filenames += self.output.additional_filenames
 
         logger.info(f'Deleting {filenames}')
 
@@ -533,6 +534,8 @@ class CalculationOutput:
 
         self.filename = None
         self.file_lines = None
+        self.additional_filenames = []
+
 
 
 class CalculationInput:
