@@ -4,7 +4,7 @@ import numpy as np
 from autode.opt import dic
 from scipy.optimize import minimize
 
-methane = ade.Molecule(smiles='C')
+methane = ade.Molecule('methane.xyz')
 
 
 def test_ic_base():
@@ -23,7 +23,8 @@ def test_inverse_dist_prim():
 
     x = methane.coordinates
 
-    primitives = []
+    primitives = dic.PIC(x)
+
     for i in range(methane.n_atoms):
         for j in range(i+1, methane.n_atoms):
             primitives.append(dic.InverseDistance(x=x, idx_i=i, idx_j=j))
@@ -72,8 +73,21 @@ def test_inverse_dist_dic():
     assert len(coords.primitives) == n_expected
     assert coords.primitives.B.shape == (n_expected, 3 * methane.n_atoms)
 
+    # ---------- check some elements of the B matrix ----------------
+    assert np.isclose(coords.primitives.B[0, 0],
+                      coords.primitives[0].derivative(0, 0, x=coords.x))
+
+    # dq_2/dx_(0,0) is zero as the 0-th element doesn't appear in that distance
+    assert np.isclose(coords.primitives.B[-1, 0], 0)
+
+    assert np.isclose(coords.primitives.B[1, 3],
+                      coords.primitives[1].derivative(i=1, k=0, x=coords.x))
+
     # should have 3N - 6 non-redundant internals coordinates
     assert len(coords.s) == 3 * methane.n_atoms - 6
+
+    # all distances should be ~1-3 A, so inverses between 0.3 and 1
+    assert 0.4 < np.average(coords.primitives.q) < 1.0
 
     # should be able to set a slightly perturbed set of internals
     new_s = coords.s.copy()
@@ -84,6 +98,8 @@ def test_inverse_dist_dic():
 
     for i, coord in enumerate(coords.x):
         new_methane.atoms[i].coord = coord
+
+    new_methane.print_xyz_file()
 
 
 """

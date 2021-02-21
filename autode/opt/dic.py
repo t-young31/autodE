@@ -6,7 +6,6 @@ and references cited therein
 import time
 import numpy as np
 from abc import ABC
-from scipy.linalg import eigh, inv
 from autode.log import logger
 
 
@@ -136,18 +135,22 @@ class DIC(InternalCoordinates):
         self.primitives = self.primitives_type(x)
 
         B_q = self.primitives.B
+        print(self.primitives.q, 'PIC')
+        print(B_q, 'prim B')
         G = np.matmul(B_q, B_q.T)
 
-        w, v = eigh(G)  # Eigenvalues and eigenvectors respectively
+        w, v = np.linalg.eigh(G)  # Eigenvalues and eigenvectors respectively
 
         # Form a transform matrix from the primitive internals to a set of
         # 3N - 6 non-redundant internals, s
         U = v[:, np.where(np.abs(w) > 1E-10)[0]]
 
         _s = np.matmul(U.T, self.primitives.q)
+        print(_s, 'DIC')
+
 
         self.B = np.matmul(U.T, B_q)
-        self.B_T_inv = np.matmul(inv(np.matmul(self.B, self.B.T)), self.B)
+        self.B_T_inv = np.linalg.pinv(self.B)
 
         logger.info(f'Transformed in      ...{time.time() - start_time:.4f} s')
         return _s
@@ -175,14 +178,22 @@ class DIC(InternalCoordinates):
         s_k, x_k = self._s.copy(), self.x.copy().flatten()
         iteration = 0
 
-        while np.linalg.norm(s_k - new_s) > 1E-10:
+        print(s_k, 'init DIC')
 
-            s_k = self._cart_to_dic(x=x_k)
+        while np.sqrt(np.average(s_k - new_s)**2) > 1E-2:
 
-            print(self.B_T_inv.shape, new_s.shape, s_k.shape)
 
-            x_k = x_k + np.matmul(self.B_T_inv, new_s - s_k)
-            print(x_k)
+            # print(self.B_T_inv.shape, (new_s - s_k).shape)
+
+            x_k = x_k + np.matmul(self.B_T_inv, (new_s - s_k))
+            s_k = self._cart_to_dic(x=x_k.copy())
+            print('s_k is wrong :-(. All fine to B_q')
+            print(s_k, '\n')
+            return
+
+            # print(x_k)
+            if iteration > 1:
+                return
 
             iteration += 1
 
