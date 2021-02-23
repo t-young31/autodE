@@ -9,10 +9,11 @@ methane = ade.Molecule(smiles='C')
 
 
 def test_ic_base():
+    """Test base level internal coordinate properties"""
 
     flat_x = np.ones(9)
-    internals = dic.InternalCoordinates(x=flat_x)
-    assert internals.x.shape == (3, 3)
+    coords = dic.InternalCoordinates(x=flat_x)
+    assert coords.x.shape == (3, 3)
 
     # Can't auto-reshape something that doesn't fit into a Nx3 matrix
     with pytest.raises(AssertionError):
@@ -21,6 +22,7 @@ def test_ic_base():
 
 
 def test_inverse_dist_prim():
+    """Test inverse distances, derivative etc."""
 
     x = methane.coordinates
 
@@ -65,6 +67,7 @@ def test_inverse_dist_prim():
 
 
 def test_inverse_dist_dic_methane():
+    """Test inverse distance delocalised internals for methane"""
 
     coords = dic.DIC(x=methane.coordinates)
 
@@ -103,6 +106,7 @@ def test_inverse_dist_dic_methane():
 
 
 def test_inverse_dist_dic_ethane():
+    """Test a slightly larger example with DIC from inverse distances"""
 
     ethane = ade.Molecule(smiles='CC')
     # ethane.print_xyz_file()
@@ -117,10 +121,12 @@ def test_inverse_dist_dic_ethane():
     new_mol.coordinates = coords.x
     # new_mol.print_xyz_file(filename='tmp.xyz')
 
-    assert np.sqrt(np.average(new_mol.coordinates - ethane.coordinates)**2) < 1E-1
+    rmsd = np.sqrt(np.average(new_mol.coordinates - ethane.coordinates)**2)
+    assert rmsd < 1E-1
 
 
 def test_dic_opt():
+    """Test a simple optimisation of methane with DICs"""
 
     mol = ade.Molecule(smiles='C')
     coords = dic.DIC(mol.coordinates)
@@ -133,7 +139,11 @@ def test_dic_opt():
                       method='BFGS',
                       options={'gtol': 1E-3},
                       jac=opt.gradient)             # g^int
+
+    # below have been checked by hand!
     # print(result)
+    # mol.print_xyz_file()
 
     assert result.success
     assert are_coords_reasonable(mol.coordinates)
+

@@ -1,7 +1,15 @@
 """
 Delocalised internal coordinate implementation from:
 https://aip.scitation.org/doi/pdf/10.1063/1.478397
-and references cited therein
+and references cited therein. The notation follows the paper and is briefly
+summarised below:
+
+x : Cartesian coordinates
+B : Wilson B matrix
+G : 'Spectroscopic G matrix'
+q : Redundant internal coordinates
+s : Non-redundant internal coordinates
+U : Transformation matrix q -> s
 """
 import time
 import numpy as np
@@ -44,7 +52,7 @@ class DIC(InternalCoordinates):
         return self._s
 
     @s.setter
-    def s(self, new_s):
+    def s(self, s_new):
         """
         Set some new internal coordinates and update the Cartesians
 
@@ -53,10 +61,10 @@ class DIC(InternalCoordinates):
         for an iteration k
 
         Arguments:
-            new_s (np.ndarray): New internal coordinates used to update
+            s_new (np.ndarray): New internal coordinates used to update
         """
         logger.info('Setting new internal and cartesian coordinates')
-        assert self._s.shape == new_s.shape
+        assert self._s.shape == s_new.shape
         start_time = time.time()
 
         # Initialise the 0th iteration internal and cartesian coordinates
@@ -64,12 +72,13 @@ class DIC(InternalCoordinates):
         iteration = 0
 
         # Converge to an RMS difference of less than a tolerance
-        while np.sqrt(np.average(s_k - new_s)**2) > 1E-6 and iteration < 100:
+        while np.sqrt(np.average(s_k - s_new) ** 2) > 1E-6 and iteration < 100:
 
-            x_k = x_k + np.matmul(self.B_T_inv, (new_s - s_k))
+            x_k = x_k + np.matmul(self.B_T_inv, (s_new - s_k))
 
             if np.max(np.abs(x_k)) > 1E5:
-                raise RuntimeError
+                raise RuntimeError('Something went very wrong in the back '
+                                   'transformation from internal -> carts')
 
             # Rebuild the primitives from the back-transformer cartesians
             primitives = self.primitives_type(x_k)
