@@ -355,7 +355,7 @@ class Species:
 
         self.solvent = get_solvent(solvent_name=solvent_name)
 
-        self.energy = None      # Total electronic energy in Hartrees (float)
+        self.energy = None      # Total electronic energy in Ha
         self.h_cont = None      # Enthalpic contribution to the energy in Ha
         self.g_cont = None      # Gibbs energy contribution to the energy in Ha
 

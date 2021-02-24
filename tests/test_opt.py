@@ -146,4 +146,3 @@ def test_dic_opt():
 
     assert result.success
     assert are_coords_reasonable(mol.coordinates)
-
