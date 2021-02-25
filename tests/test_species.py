@@ -45,6 +45,15 @@ def test_species_class():
     with pytest.raises(NotImplementedError):
         water.find_lowest_energy_conformer(lmethod=xtb)
 
+    # Coordinates must have the correct shape
+    with pytest.raises(ValueError):
+        water.coordinates = np.array([1.0])
+
+    # but can be broadcast-able
+    flat_coords = water.coordinates.flatten()
+    water.coordinates = flat_coords
+    assert water.n_atoms == 3
+
 
 def test_species_xyz_file():
 

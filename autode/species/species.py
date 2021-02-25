@@ -59,10 +59,16 @@ class Species:
         return np.array([atom.coord for atom in self.atoms], copy=True)
 
     @coordinates.setter
-    def coordinates(self, coords):
+    def coordinates(self, coords: np.ndarray):
         """For coordinates as a np.ndarray with shape Nx3 set the coordinates
         of each atom"""
-        assert coords.shape == (self.n_atoms, 3)
+        try:
+            coords = coords.reshape(self.n_atoms, 3)
+
+        except ValueError:
+            raise ValueError('Could not set the coordinates, an array with '
+                             f'shape = {coords.shape} could not be resized '
+                             f'into ({self.n_atoms}, 3)')
 
         for i in range(self.n_atoms):
             self.atoms[i].coord = coords[i]
@@ -149,8 +155,10 @@ class Species:
         return isinstance(self.solvent, ExplicitSolvent)
 
     @requires_atoms()
-    def translate(self, vec):
+    def translate(self, vec: np.ndarray):
         """Translate the molecule by vector (np.ndarray, length 3)"""
+        assert vec.shape == (3,)
+
         for atom in self.atoms:
             atom.translate(vec)
 
@@ -272,7 +280,7 @@ class Species:
         return None
 
     @requires_atoms()
-    def distance(self, i, j):
+    def distance(self, i: int, j: int):
         """Get the distance between two atoms in the species"""
         return np.linalg.norm(self.atoms[i].coord - self.atoms[j].coord)
 
