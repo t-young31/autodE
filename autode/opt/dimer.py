@@ -6,45 +6,19 @@ based on
 2. https://aip.scitation.org/doi/10.1063/1.2104507
 3. https://aip.scitation.org/doi/10.1063/1.480097
 
+-------------------------------------------------------
 x : Cartesian coordinates
 g : gradient in cartesian coordinates
 """
 import autode as ade
 import numpy as np
 from autode.log import logger
+from autode.input_output import atoms_to_xyz_file
+from scipy.optimize import minimize
 
 
-class Dimer:
-    """Dimer spanning two points on the PES with a TS at the midpoint"""
-
-    def _gradient(self, coordinates):
-        """
-        Calculate the gradient for a set of coordinates
-
-        Args:
-            coordinates (np.ndarray): Cartesian coordinates with shape
-                        (n_atoms, 3) or (3*n_atoms,)
-
-        Returns:
-            (np.ndarray): Gradient shape = (3*n_atoms,)  (Ha / Å)
-
-        Raises:
-            (autode.exceptions.CalculationException): If a calculation fails
-        """
-        self._species.coordinates = coordinates
-
-        # Run the calculation and remove all the files, if it's successful
-        calc = ade.Calculation(name='tmp_grad',
-                               molecule=self._species,
-                               method=self.method,
-                               keywords=self.method.keywords.grad,
-                               n_cores=ade.Config.n_cores)
-        calc.run()
-
-        grad = calc.get_gradients()
-        calc.clean_up(force=True, everything=True)
-
-        return grad.flatten()
+class BaseDimer:
+    """Base class for a dimer"""
 
     @property
     def tau(self):
@@ -80,6 +54,49 @@ class Dimer:
     def dc_dphi(self):
         """dC_τ/dϕ eqn. 6 in ref [1] """
         return 2.0 * np.dot((self.g1 - self.g0), self.theta) / self.delta
+
+    def __init__(self):
+        """Initialise cartesian coordinate and gradient properties"""
+
+        self.x0 = None
+        self.x1 = None
+        self.x2 = None
+
+        self.g0 = None
+        self.g1 = None
+
+
+class Dimer(BaseDimer):
+    """Dimer spanning two points on the PES with a TS at the midpoint"""
+
+    def _gradient(self, coordinates):
+        """
+        Calculate the gradient for a set of coordinates
+
+        Args:
+            coordinates (np.ndarray): Cartesian coordinates with shape
+                        (n_atoms, 3) or (3*n_atoms,)
+
+        Returns:
+            (np.ndarray): Gradient shape = (3*n_atoms,)  (Ha / Å)
+
+        Raises:
+            (autode.exceptions.CalculationException): If a calculation fails
+        """
+        self._species.coordinates = coordinates
+
+        # Run the calculation and remove all the files, if it's successful
+        calc = ade.Calculation(name='tmp_grad',
+                               molecule=self._species,
+                               method=self.method,
+                               keywords=self.method.keywords.grad,
+                               n_cores=ade.Config.n_cores)
+        calc.run()
+
+        grad = calc.get_gradients()
+        calc.clean_up(force=True, everything=True)
+
+        return grad.flatten()
 
     def rotate_coords(self, phi, update_g1=False):
         """
@@ -139,7 +156,7 @@ class Dimer:
 
         return None
 
-    def optimise_rotation(self, phi_tol=1E-2, max_iterations=50):
+    def optimise_rotation(self, phi_tol=8E-2, max_iterations=10):
         """Rotate the dimer optimally
 
         Keyword Arguments:
@@ -152,10 +169,28 @@ class Dimer:
         while iteration < max_iterations and phi > phi_tol:
             self.rotate()
 
-            phi = self.iterations[-1].phi
-            logger.info(f'Iteration={iteration}   ϕ={phi:.4f}')
+            phi = np.abs(self.iterations[-1].phi)
+            logger.info(f'Iteration={iteration}   ϕ={phi:.4f} > {phi_tol:.4f}')
 
             iteration += 1
+
+        return None
+
+    def translate(self, init_step_size=0.1):
+        """Translate the dimer, with the goal of the midpoint being the TS """
+
+        if not self.iterations[-1].did_translation():
+            step_size = init_step_size
+
+        else:
+            # TODO: implement
+            raise NotImplementedError
+
+        # Translational force on the dimer
+        f_t = - self.g0 + 2.0*np.dot(self.g0, self.tau_hat) * self.tau_hat
+
+        for coords in (self.x0, self.x1, self.x2):
+            coords += step_size * f_t
 
         return None
 
@@ -173,6 +208,8 @@ class Dimer:
 
             method (autode.wrappers.base.ElectronicStructureMethod):
         """
+        super().__init__()
+
         self.method = method  # Method for gradient evaluations
 
         # Temporary species used to perform gradient calculations
@@ -187,11 +224,42 @@ class Dimer:
         self.g0 = self._gradient(coordinates=self.x0)
         self.g1 = self._gradient(coordinates=self.x1)
 
-        self.iterations = [DimerIteration(phi=0, d=0, dimer=self)]
+        self.iterations = DimerIterations()
+        self.iterations.append(DimerIteration(phi=0, d=0, dimer=self))
 
 
-class DimerIteration:
+class DimerIterations(list):
+
+    def print_xyz_file(self, species, point='1'):
+        """Print the xyz file for one of the points in the dimer"""
+        _species = species.copy()
+
+        open(f'dimer_{point}.xyz', 'w').close()   # empty the file
+
+        for i, iteration in enumerate(self):
+            coords = getattr(iteration, f'x{point}')
+            _species.coordinates = coords
+
+            atoms_to_xyz_file(_species.atoms,
+                              filename=f'dimer_{point}.xyz',
+                              title_line=f'Dimer iteration = {i}',
+                              append=True)
+        return None
+
+    def __init__(self):
+        super().__init__()
+
+
+class DimerIteration(BaseDimer):
     """Single iteration of a TS dimer"""
+
+    def did_rotation(self):
+        """Rotated this iteration?"""
+        return True if self.phi != 0 else False
+
+    def did_translation(self):
+        """Translated this iteration?"""
+        return True if self.d != 0 else False
 
     def __init__(self, phi, d, dimer):
         """
@@ -203,6 +271,7 @@ class DimerIteration:
                        iteration
             dimer (autode.opt.dimer.Dimer):
         """
+        super().__init__()
         self.phi = phi
         self.d = d
 
@@ -212,3 +281,5 @@ class DimerIteration:
 
         self.g0 = dimer.g0.copy()
         self.g1 = dimer.g1.copy()
+
+

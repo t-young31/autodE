@@ -10,7 +10,9 @@ def test_dimer_ts_simple():
                   species_mid=ade.Molecule('sn2_midpoint.xyz'),
                   method=ade.methods.XTB())
 
-    dimer.optimise_rotation(phi_tol=0.05)
+    for _ in range(10):
+        dimer.optimise_rotation(phi_tol=0.08)
+        dimer.translate(init_step_size=0.1)
 
     assert len(dimer.iterations) > 1
     assert dimer.iterations[-1].phi < 0.1
@@ -19,3 +21,6 @@ def test_dimer_ts_simple():
     final_point.coordinates = dimer.x1
     # TODO: remove this test print
     final_point.print_xyz_file(filename='tmp.xyz')
+
+    dimer.iterations.print_xyz_file(species=dimer._species,
+                                    point=1)

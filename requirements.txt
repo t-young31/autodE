@@ -1,6 +1,6 @@
 rdkit
 numpy
 networkx
-matplotlib
+matplotlib-base
 cython
 scipy
