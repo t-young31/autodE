@@ -9,6 +9,7 @@ from autode.config import Config
 from autode.units import KcalMol
 from autode.units import KjMol
 from autode.calculation import Calculation
+from autode import atoms
 from autode import methods
 from autode import geom
 from autode import pes
@@ -33,6 +34,7 @@ __all__ = [
     'KcalMol',
     'Calculation',
     'KjMol',
+    'atoms',
     'pes',
     'neb',
     'geom',

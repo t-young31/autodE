@@ -21,6 +21,5 @@ class PointCharge:
 
         # If initialised with a coordinate override the default
         if coord is not None:
-            assert type(coord) is np.ndarray
-            assert len(coord) == 3
+            assert type(coord) is np.ndarray and len(coord) == 3
             self.coord = coord

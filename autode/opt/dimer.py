@@ -34,16 +34,32 @@ class BaseDimer:
     @property
     def delta(self):
         """Distance between the dimer point, Δ"""
-        return np.linalg.norm(self.x1 - self.x2) / 2.0
+        _delta = np.linalg.norm(self.x1 - self.x2) / 2.0
+
+        if np.isclose(_delta, 0.0):
+            raise RuntimeError('Zero distance between the dimer points')
+
+        return _delta
+
+    @property
+    def f_r(self):
+        """Rotational force F_R. eqn. 3 in ref. [1]"""
+        tau_hat = self.tau_hat
+        return (-2.0 * (self.g1 - self.g0)
+                + 2.0 * (np.dot((self.g1 - self.g0), tau_hat)) * tau_hat)
+
+    @property
+    def f_t(self):
+        """Translational force F_T, eqn. 2 in ref. [1]"""
+        return - self.g0 + 2.0*np.dot(self.g0, self.tau_hat) * self.tau_hat
 
     @property
     def theta(self):
         """Rotation direction Θ, calculated using steepest descent"""
-        tau_hat = self.tau_hat
-        f_r = (-2.0 * (self.g1 - self.g0)
-               + 2.0 * (np.dot((self.g1 - self.g0), tau_hat)) * tau_hat)
+        f_r = self.f_r
 
-        return f_r / np.linalg.norm(f_r)
+        # F_R / |F_R| with a small jitter to prevent division by zero
+        return f_r / (np.linalg.norm(f_r) + 1E-8)
 
     @property
     def c(self):
@@ -98,7 +114,7 @@ class Dimer(BaseDimer):
 
         return grad.flatten()
 
-    def rotate_coords(self, phi, update_g1=False):
+    def rotate_coords(self, phi, update_g1=True):
         """
         Rotate the dimer by an angle phi around the midpoint.
         eqn. 13 in ref. [2]
@@ -117,21 +133,34 @@ class Dimer(BaseDimer):
         if update_g1:
             self.g1 = self._gradient(coordinates=self.x1)
 
+        logger.info(f'Rotated coordinates, now have '
+                    f'|g1 - g0| = {np.linalg.norm(self.g1 - self.g0):.4f}')
         return None
 
-    def rotate(self):
+    def rotate(self, phi_tol):
         """Do a single steepest descent rotation of the dimer"""
+        logger.info('Doing a single dimer rotation to minimise the curvature')
 
-        # Curvature at ϕ=0 i.e. no rotation
-        c_phi0 = self.c
-
+        c_phi0 = self.c  # Curvature at ϕ=0 i.e. no rotation
         # and derivative with respect to the rotation evaluated at ϕ=0
         dc_dphi0 = self.dc_dphi
+
+        # keep a copy of the coordinates to reset after the test rotation
+        x1_phi0, x2_phi0 = self.x1, self.x2
+
+        logger.info(f'Current: C = {c_phi0:.4f}  and   dC/dϕ = {dc_dphi0:.4f}')
 
         # test point for rotation. eqn. 5 in ref [1]
         phi_1 = -0.5 * np.arctan(dc_dphi0 / (2.0 * np.linalg.norm(c_phi0)))
 
-        # rotate to the test point and update the gradient
+        if np.abs(phi_1) < phi_tol:
+            logger.info('Test point rotation was below the threshold, not '
+                        'rotating')
+            self.iterations.append(DimerIteration(phi=phi_1, d=0, dimer=self))
+            return None
+
+        logger.info(f'Rotating by ϕ = {phi_1:.4f} rad and estimating the '
+                    f'curvature')
         self.rotate_coords(phi=phi_1, update_g1=True)
 
         b1 = 0.5 * dc_dphi0  # eqn. 8 from ref. [1]
@@ -142,18 +171,25 @@ class Dimer(BaseDimer):
         a0 = 2.0 * (c_phi0 - a1)  # eqn. 10 from ref. [1]
 
         phi_min = 0.5 * np.arctan(b1 / a1)
-        c_min = 0.5 * a0 + a1 * np.cos(2.0 * phi_min) + b1 * np.sin(
-            2.0 * phi_min)
+        logger.info(f'ϕ_min = {phi_min:.4f} rad')
+
+        if np.abs(phi_min) < phi_tol:
+            logger.info('Min rotation was below the threshold, not rotating')
+            self.iterations.append(DimerIteration(phi=phi_min, d=0, dimer=self))
+            return None
+
+        c_min = 0.5 * a0 + a1 * np.cos(2.0*phi_min) + b1 * np.sin(2.0*phi_min)
 
         if c_min > c_phi0:
             logger.info('Optimised curvature was larger than the initial, '
                         'adding π/2')
-            c_min += np.pi / 2.0
+            phi_min += np.pi / 2.0
 
+        # Rotate back from the test point, then to the minimum
+        self.x1, self.x2 = x1_phi0, x2_phi0
         self.rotate_coords(phi=phi_min, update_g1=True)
 
         self.iterations.append(DimerIteration(phi=phi_min, d=0, dimer=self))
-
         return None
 
     def optimise_rotation(self, phi_tol=8E-2, max_iterations=10):
@@ -163,38 +199,54 @@ class Dimer(BaseDimer):
             phi_tol (float): Tolerance below which rotation is not performed
             max_iterations (int): Maximum number of rotation steps to perform
         """
-        logger.info(f'Minimising dimer rotation up to {phi_tol}')
+        logger.info(f'Minimising dimer rotation up to δϕ = {phi_tol:.4f} rad')
         iteration, phi = 0, np.inf
 
         while iteration < max_iterations and phi > phi_tol:
-            self.rotate()
-
+            self.rotate(phi_tol=phi_tol)
             phi = np.abs(self.iterations[-1].phi)
-            logger.info(f'Iteration={iteration}   ϕ={phi:.4f} > {phi_tol:.4f}')
+
+            logger.info(f'Iteration={iteration}  '
+                        f'ϕ={phi:.4f} ϕtol={phi_tol:.4f}')
 
             iteration += 1
 
         return None
 
-    def translate(self, init_step_size=0.1):
+    def translate(self, init_step_size=0.1, update_g0=True):
         """Translate the dimer, with the goal of the midpoint being the TS """
+        trns_iters = [iteration for iteration in self.iterations
+                      if iteration.did_translation()]
 
-        if not self.iterations[-1].did_translation():
+        if len(trns_iters) < 2:
+            logger.info(f'Did not have two previous translation step, guessing'
+                        f' γ = {init_step_size} Å')
             step_size = init_step_size
 
         else:
-            # TODO: implement
-            raise NotImplementedError
+            prev_trns_iter = trns_iters[-2]
+            logger.info(f'Did {len(trns_iters)} previous translations, can '
+                        f'calculate γ')
+            # Barzilai–Borwein method for the step size
+            step_size = (np.abs(np.dot((self.x0 - prev_trns_iter.x0),
+                                       (self.f_t - prev_trns_iter.f_t)))
+                         / np.linalg.norm(self.f_t - prev_trns_iter.f_t)**2)
 
-        # Translational force on the dimer
-        f_t = - self.g0 + 2.0*np.dot(self.g0, self.tau_hat) * self.tau_hat
+        delta_x = step_size * self.f_t
+        length = np.linalg.norm(delta_x) / len(self.x0)
+        logger.info(f'Translating by {length:.4f} Å per coordinate')
 
         for coords in (self.x0, self.x1, self.x2):
-            coords += step_size * f_t
+            coords += delta_x
 
+        # Update the gradient of the midpoint, required for the translation
+        if update_g0:
+            self.g0 = self._gradient(coordinates=self.x0)
+
+        self.iterations.append(DimerIteration(phi=0, d=length, dimer=self))
         return None
 
-    def __init__(self, species_1, species_2, species_mid, method):
+    def __init__(self, species_1, species_2, method):
         """
         Initialise a dimer from three species, one either side of a peak and a
          midpoint (species_mid)
@@ -216,13 +268,18 @@ class Dimer(BaseDimer):
         self._species = species_1.copy()
 
         # Note the notation follows [1] and is not necessarily the most clear..
-        self.x0 = species_mid.coordinates.flatten()
+
+        # TODO: check that you can have a midpoint that isn't quite
+        #  at the midpoint...
         self.x1 = species_1.coordinates.flatten()
         self.x2 = species_2.coordinates.flatten()
+        self.x0 = (self.x1 + self.x2) / 2.0
 
         # Run two initial gradient evaluations
         self.g0 = self._gradient(coordinates=self.x0)
         self.g1 = self._gradient(coordinates=self.x1)
+
+        logger.info(f'Initialised a dimer with Δ = {self.delta:.4f} Å')
 
         self.iterations = DimerIterations()
         self.iterations.append(DimerIteration(phi=0, d=0, dimer=self))
