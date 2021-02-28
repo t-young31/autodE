@@ -1,36 +1,17 @@
+# ------------------------ Calculation exceptions -----------------------------
 class CalculationException(Exception):
-    pass
+    """Base autodE calculation exception"""
 
 
 class AtomsNotFound(CalculationException):
     pass
 
 
-class NoAtomsInMolecule(Exception):
-    pass
-
-
-class NoConformers(Exception):
-    pass
-
-
-class FitFailed(Exception):
-    pass
-
-
-class NoInputError(Exception):
+class NoCalculationOutput(CalculationException):
     pass
 
 
 class MethodUnavailable(CalculationException):
-    pass
-
-
-class SolventUnavailable(Exception):
-    pass
-
-
-class UnbalancedReaction(Exception):
     pass
 
 
@@ -39,15 +20,83 @@ class UnsuppportedCalculationInput(CalculationException):
         super().__init__(message)
 
 
+class NoNormalModesFound(CalculationException):
+    pass
+
+
+class CouldNotGetProperty(CalculationException):
+    def __init__(self, name):
+        super().__init__(f'Could not get {name}')
+
+
+class SolventUnavailable(CalculationException):
+    pass
+
+
+class NoInput(CalculationException):
+    pass
+
+
+# -------------------------- Graph exceptions ---------------------------------
+class GraphException(Exception):
+    """Base autodE graph exception"""
+
+
+class BondsInSMILESAndGraphDontMatch(GraphException):
+    pass
+
+
+class NoMapping(GraphException):
+    pass
+
+
+class NoMolecularGraph(GraphException):
+    pass
+
+
+class CannotSplitAcrossBond(GraphException):
+    """A molecule cannot be partitioned by deleting one bond"""
+
+
+# -------------------------- Reaction exceptions ------------------------------
+class ReactionException(Exception):
+    """Base autodE reaction exception"""
+
+
+class UnbalancedReaction(ReactionException):
+    pass
+
+
+class SolventsDontMatch(ReactionException):
+    pass
+
+
+class ReactionFormationFalied(ReactionException):
+    pass
+
+
+# --------------------------- Other exceptions --------------------------------
+class NoAtomsInMolecule(Exception):
+    pass
+
+
+class NoConformers(Exception):
+    pass
+
+
+class OptimisationFailed(Exception):
+    pass
+
+
+class FitFailed(Exception):
+    pass
+
+
+class CouldNotPlotSmoothProfile(Exception):
+    pass
+
+
 class SolventNotFound(Exception):
-    pass
-
-
-class SolventsDontMatch(Exception):
-    pass
-
-
-class BondsInSMILESAndGraphDontMatch(Exception):
     pass
 
 
@@ -59,27 +108,7 @@ class XYZfileWrongFormat(Exception):
     pass
 
 
-class ReactionFormationFalied(Exception):
-    pass
-
-
 class NoClosestSpecies(Exception):
-    pass
-
-
-class NoMapping(Exception):
-    pass
-
-
-class NoNormalModesFound(CalculationException):
-    pass
-
-
-class NoMolecularGraph(Exception):
-    pass
-
-
-class NoCalculationOutput(CalculationException):
     pass
 
 
@@ -88,19 +117,6 @@ class RDKitFailed(Exception):
 
 
 class InvalidSmilesString(Exception):
-    pass
-
-
-class CouldNotGetProperty(CalculationException):
-    def __init__(self, name):
-        super().__init__(f'Could not get {name}')
-
-
-class CannotSplitAcrossBond(Exception):
-    """A molecule cannot be partitioned by deleting one bond"""
-
-
-class CouldNotPlotSmoothProfile(Exception):
     pass
 
 

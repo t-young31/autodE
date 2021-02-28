@@ -9,7 +9,7 @@ from autode.species.molecule import SolvatedMolecule
 from autode.input_output import xyz_file_to_atoms
 from autode.exceptions import AtomsNotFound
 from autode.exceptions import NoNormalModesFound
-from autode.exceptions import NoInputError
+from autode.exceptions import NoInput
 from autode.exceptions import SolventUnavailable
 from autode.exceptions import UnsuppportedCalculationInput
 from autode.wrappers.keywords import SinglePointKeywords, OptKeywords
@@ -71,7 +71,7 @@ def test_orca_opt_calculation():
 
     # If the calculation is not run with calc.run() then there should be no
     # input and the calc should raise that there is no input
-    with pytest.raises(NoInputError):
+    with pytest.raises(NoInput):
         execute_calc(calc)
 
 
@@ -92,7 +92,7 @@ def test_calc_bad_mol():
     mol.charge = 0
     mol.solvent = None
 
-    with pytest.raises(NoInputError):
+    with pytest.raises(NoInput):
         Calculation(name='no_atoms_mol', molecule=mol, method=method,
                     keywords=opt_keywords)
 
@@ -149,7 +149,7 @@ def test_bad_orca_output():
     with pytest.raises(AtomsNotFound):
         calc.get_final_atoms()
 
-    with pytest.raises(NoInputError):
+    with pytest.raises(NoInput):
         calc.execute_calculation()
 
     calc.output_file_lines = None

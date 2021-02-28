@@ -534,6 +534,9 @@ class G09(ElectronicStructureMethod):
 
         return np.array(gradients)
 
+    def get_hessian(self, calc):
+        raise NotImplementedError
+
     def __init__(self, name='g09', path=None, keywords_set=None,
                  implicit_solvation_type=None):
         """Gaussian 09"""

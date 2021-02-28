@@ -7,7 +7,7 @@ from autode.calculation import Calculation
 from autode.species.molecule import Molecule
 from autode.wrappers.keywords import OptKeywords, SinglePointKeywords
 from autode.exceptions import AtomsNotFound
-from autode.exceptions import NoInputError
+from autode.exceptions import NoInput
 from autode.exceptions import NoNormalModesFound
 from autode.point_charges import PointCharge
 from autode.config import Config
@@ -134,7 +134,7 @@ def test_bad_gauss_output():
     with pytest.raises(AtomsNotFound):
         calc.get_final_atoms()
 
-    with pytest.raises(NoInputError):
+    with pytest.raises(NoInput):
         calc.execute_calculation()
 
 

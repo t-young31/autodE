@@ -223,13 +223,30 @@ class ElectronicStructureMethod(ABC):
     @requires_output()
     def get_gradients(self, calc):
         """
-        Function implemented in individual child classes
+        Get the gradients with respect to cartesian displacements
 
         Arguments:
             calc (autode.calculation.Calculation):
 
         Returns:
-            (np.ndarray):
+            (np.ndarray): shape = (n_atoms, 3)
+
+        Raisese:
+            (autode.exceptions.CouldNotGetProperty)
+        """
+        pass
+
+    @abstractmethod
+    @requires_output()
+    def get_hessian(self, calc):
+        """
+        Get the Hessian (non-mass weighted)
+
+        Arguments:
+            calc (autode.calculation.Calculation):
+
+        Returns:
+            (np.ndarray): shape = (3*n_atoms, 3*n_atoms)
 
         Raisese:
             (autode.exceptions.CouldNotGetProperty)

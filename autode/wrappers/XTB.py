@@ -2,11 +2,11 @@ import numpy as np
 import os
 from autode.wrappers.base import ElectronicStructureMethod
 from autode.utils import run_external
-from autode.wrappers.keywords import OptKeywords, GradientKeywords
+import autode.wrappers.keywords as kwds
 from autode.atoms import Atom
 from autode.config import Config
 from autode.constants import Constants
-from autode.exceptions import AtomsNotFound
+from autode.exceptions import AtomsNotFound, CouldNotGetProperty
 from autode.utils import work_in_tmp_dir
 from autode.log import logger
 
@@ -126,14 +126,17 @@ class XTB(ElectronicStructureMethod):
 
         flags = ['--chrg', str(calc.molecule.charge)]
 
-        if isinstance(calc.input.keywords, OptKeywords):
-            flags.append('--opt')
-
-        if isinstance(calc.input.keywords, GradientKeywords):
-            flags.append('--grad')
-
         if calc.input.solvent is not None:
             flags += ['--gbsa', calc.input.solvent]
+
+        if isinstance(calc.input.keywords, kwds.OptKeywords):
+            flags.append('--opt')
+
+        if isinstance(calc.input.keywords, kwds.GradientKeywords):
+            flags.append('--grad')
+
+        if isinstance(calc.input.keywords, kwds.HessianKeywords):
+            flags += [ '--hess', '--grad']
 
         if len(calc.input.additional_filenames) > 0:
             # XTB allows for an additional xcontrol file, which should be the
@@ -141,7 +144,8 @@ class XTB(ElectronicStructureMethod):
             flags += ['--input', calc.input.additional_filenames[-1]]
 
         @work_in_tmp_dir(filenames_to_copy=calc.input.get_input_filenames(),
-                         kept_file_exts=('.xyz', '.out', '.pc', '.grad', 'gradient'),
+                         kept_file_exts=('.xyz', '.out', '.pc', '.grad',
+                                         'gradient', 'hessian'),
                          use_ll_tmp=True)
         def execute_xtb():
             logger.info(f'Setting the number of OMP threads to {calc.n_cores}')
@@ -328,8 +332,37 @@ class XTB(ElectronicStructureMethod):
             calc.output.additional_filenames.append(f'{calc.name}_xtb.grad')
 
         # Convert from Ha a0^-1 to Ha A-1
-        gradients = [grad / Constants.a02ang for grad in gradients]
-        return np.array(gradients)
+        return np.array(gradients) / Constants.a02ang
+
+    def get_hessian(self, calc):
+        hessian = []
+
+        if not os.path.exists('hessian'):
+            # print(os.listdir(os.getcwd()))
+            raise CouldNotGetProperty('Hessian')
+
+        # Add the additional output files to those created
+        calc.output.additional_filenames.append('hessian')
+        if os.path.exists('xtbhess.xyz'):
+            calc.output.additional_filenames.append('xtbhess.xyz')
+
+        for i, line in enumerate(open('hessian', 'r')):
+
+            try:
+                hessian += [float(item) for item in line.split()]
+
+            except ValueError:
+                # line contains more than just floats
+                continue
+
+        req_shape = (3*calc.molecule.n_atoms, 3*calc.molecule.n_atoms)
+        try:
+            # Convert from Ha a0^-2 to Ha A-2
+            return np.array(hessian).reshape(req_shape) / (Constants.a02ang**2)
+
+        except ValueError:
+            # Did not have the correct number of elements
+            raise CouldNotGetProperty('Hessian')
 
     def __init__(self):
         super().__init__(name='xtb', path=Config.XTB.path,

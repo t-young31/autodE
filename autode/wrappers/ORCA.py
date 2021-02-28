@@ -501,6 +501,9 @@ class ORCA(ElectronicStructureMethod):
 
         return np.array(gradients)
 
+    def get_hessian(self, calc):
+        raise NotImplementedError
+
     def __init__(self):
         super().__init__('orca', path=Config.ORCA.path,
                          keywords_set=Config.ORCA.keywords,

@@ -386,6 +386,9 @@ class NWChem(ElectronicStructureMethod):
         gradients = [grad / Constants.a02ang for grad in gradients]
         return np.array(gradients)
 
+    def get_hessian(self, calc):
+        raise NotImplementedError
+
     def __init__(self):
         super().__init__('nwchem', path=Config.NWChem.path,
                          keywords_set=Config.NWChem.keywords,

@@ -344,6 +344,9 @@ class MOPAC(ElectronicStructureMethod):
 
         return grad_array
 
+    def get_hessian(self, calc):
+        raise NotImplementedError
+
     def __init__(self):
         super().__init__(name='mopac', path=Config.MOPAC.path,
                          keywords_set=Config.MOPAC.keywords,

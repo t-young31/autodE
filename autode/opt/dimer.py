@@ -13,8 +13,8 @@ g : gradient in cartesian coordinates
 import autode as ade
 import numpy as np
 from autode.log import logger
+from autode.opt.base import Optimiser
 from autode.input_output import atoms_to_xyz_file
-from scipy.optimize import minimize
 
 
 class BaseDimer:
@@ -82,37 +82,13 @@ class BaseDimer:
         self.g1 = None
 
 
-class Dimer(BaseDimer):
+class Dimer(Optimiser, BaseDimer):
     """Dimer spanning two points on the PES with a TS at the midpoint"""
 
-    def _gradient(self, coordinates):
-        """
-        Calculate the gradient for a set of coordinates
-
-        Args:
-            coordinates (np.ndarray): Cartesian coordinates with shape
-                        (n_atoms, 3) or (3*n_atoms,)
-
-        Returns:
-            (np.ndarray): Gradient shape = (3*n_atoms,)  (Ha / Å)
-
-        Raises:
-            (autode.exceptions.CalculationException): If a calculation fails
-        """
-        self._species.coordinates = coordinates
-
-        # Run the calculation and remove all the files, if it's successful
-        calc = ade.Calculation(name='tmp_grad',
-                               molecule=self._species,
-                               method=self.method,
-                               keywords=self.method.keywords.grad,
-                               n_cores=ade.Config.n_cores)
-        calc.run()
-
-        grad = calc.get_gradients()
-        calc.clean_up(force=True, everything=True)
-
-        return grad.flatten()
+    def run(self):
+        """Optimise to convergence"""
+        # TODO update self.species once optimised
+        raise NotImplementedError
 
     def rotate_coords(self, phi, update_g1=True):
         """
@@ -131,7 +107,7 @@ class Dimer(BaseDimer):
         self.x2 = self.x0 - delta * (tau_hat * np.cos(phi) + theta * np.sin(phi))
 
         if update_g1:
-            self.g1 = self._gradient(coordinates=self.x1)
+            self.g1 = self._get_gradient(coordinates=self.x1)
 
         logger.info(f'Rotated coordinates, now have '
                     f'|g1 - g0| = {np.linalg.norm(self.g1 - self.g0):.4f}')
@@ -241,7 +217,7 @@ class Dimer(BaseDimer):
 
         # Update the gradient of the midpoint, required for the translation
         if update_g0:
-            self.g0 = self._gradient(coordinates=self.x0)
+            self.g0 = self._get_gradient(coordinates=self.x0)
 
         self.iterations.append(DimerIteration(phi=0, d=length, dimer=self))
         return None
@@ -252,32 +228,24 @@ class Dimer(BaseDimer):
          midpoint (species_mid)
 
         Arguments:
-            species_1: (ade.species.Species)
+            species_1 (ade.species.Species):
 
-            species_2: (ade.species.Species)
-
-            species_mid: (ade.species.Species)
+            species_2 (ade.species.Species):
 
             method (autode.wrappers.base.ElectronicStructureMethod):
         """
-        super().__init__()
-
-        self.method = method  # Method for gradient evaluations
-
-        # Temporary species used to perform gradient calculations
-        self._species = species_1.copy()
+        super(Dimer, self).__init__(species=species_1.copy(), method=method)
 
         # Note the notation follows [1] and is not necessarily the most clear..
-
-        # TODO: check that you can have a midpoint that isn't quite
-        #  at the midpoint...
         self.x1 = species_1.coordinates.flatten()
         self.x2 = species_2.coordinates.flatten()
         self.x0 = (self.x1 + self.x2) / 2.0
 
+        # TODO: check the linear interpolation isn't too large. i.e delta < tol
+
         # Run two initial gradient evaluations
-        self.g0 = self._gradient(coordinates=self.x0)
-        self.g1 = self._gradient(coordinates=self.x1)
+        self.g0 = self._get_gradient(coordinates=self.x0)
+        self.g1 = self._get_gradient(coordinates=self.x1)
 
         logger.info(f'Initialised a dimer with Δ = {self.delta:.4f} Å')
 
@@ -338,5 +306,3 @@ class DimerIteration(BaseDimer):
 
         self.g0 = dimer.g0.copy()
         self.g1 = dimer.g1.copy()
-
-

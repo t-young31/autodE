@@ -78,7 +78,7 @@ class Calculation:
         # The molecule must have > 0 atoms
         if self.molecule.atoms is None or self.molecule.n_atoms == 0:
             logger.error('Have no atoms. Can\'t form a calculation')
-            raise ex.NoInputError
+            raise ex.NoInput
 
     def _get_energy(self, e=False, h=False, g=False, force=False):
         """
@@ -336,6 +336,24 @@ class Calculation:
 
         return gradients
 
+    def get_hessian(self):
+        """
+        Get the Hessian (d2E/dx^2) with respect to cartesian displacement
+        of a single atom from a calculation
+
+        Returns:
+            (np.ndarray): Hessian matrix (Ha Å^-2). shape = (n_atoms, 3)
+        """
+        logger.info(f'Getting Hessian from {self.output.filename}')
+
+        hessian = self.method.get_hessian(self)
+        three_n = 3 * self.molecule.n_atoms
+
+        if hessian.shape != (three_n, three_n):
+            raise ex.CouldNotGetProperty(name='Hessian')
+
+        return hessian
+
     def terminated_normally(self):
         """Determine if the calculation terminated without error"""
         logger.info(f'Checking for {self.output.filename} normal termination')
@@ -409,7 +427,7 @@ class Calculation:
         logger.info(f'Running {self.input.filename} using {self.method.name}')
 
         if not self.input.exists():
-            raise ex.NoInputError('Input did not exist')
+            raise ex.NoInput('Input did not exist')
 
         # If the output file already exists set the output lines
         if self.output.filename is not None and os.path.exists(self.output.filename):
@@ -535,7 +553,6 @@ class CalculationOutput:
         self.filename = None
         self.file_lines = None
         self.additional_filenames = []
-
 
 
 class CalculationInput:

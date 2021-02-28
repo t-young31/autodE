@@ -82,7 +82,7 @@ def test_calc_class():
     assert str(new_calc) != new_calc_str
 
     mol_no_atoms = Molecule()
-    with pytest.raises(ex.NoInputError):
+    with pytest.raises(ex.NoInput):
         _ = Calculation(name='tmp2',
                         molecule=mol_no_atoms,
                         method=xtb,
