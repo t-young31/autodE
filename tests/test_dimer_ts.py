@@ -19,7 +19,7 @@ class Dimer2D(Dimer):
     ------------------
     """
 
-    def _gradient(self, coordinates):
+    def _get_gradient(self, coordinates):
         """E = x^2 - y^2   -->   (dE/dx)_y = 2x  ; (dE/dy)_x = -2y"""
         x, y = coordinates
         return np.array([2.0*x, -2.0*y])
@@ -31,8 +31,8 @@ class Dimer2D(Dimer):
         self.x0 = x_mid
         self.x2 = x2
 
-        self.g0 = self._gradient(coordinates=self.x0)
-        self.g1 = self._gradient(coordinates=self.x1)
+        self.g0 = self._get_gradient(coordinates=self.x0)
+        self.g1 = self._get_gradient(coordinates=self.x1)
 
         self.iterations = DimerIterations()
         self.iterations.append(DimerIteration(phi=0, d=0, dimer=self))

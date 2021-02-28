@@ -4,9 +4,12 @@ import autode as ade
 
 class Optimiser(ABC):
 
-    def run(self):
+    def run(self, max_iterations: int):
         """
         Optimise to convergence
+
+        Arguments:
+            max_iterations (int): Maximum number of iterations to perform
 
         Returns:
             (None):

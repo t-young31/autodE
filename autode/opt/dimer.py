@@ -85,7 +85,7 @@ class BaseDimer:
 class Dimer(Optimiser, BaseDimer):
     """Dimer spanning two points on the PES with a TS at the midpoint"""
 
-    def run(self):
+    def run(self, max_iterations=100):
         """Optimise to convergence"""
         # TODO update self.species once optimised
         raise NotImplementedError
@@ -256,7 +256,16 @@ class Dimer(Optimiser, BaseDimer):
 class DimerIterations(list):
 
     def print_xyz_file(self, species, point='1'):
-        """Print the xyz file for one of the points in the dimer"""
+        """Print the xyz file for one of the points in the dimer
+
+        Arguments:
+            species (autode.species.Species):
+
+        Keyword Arguments:
+            point (str | int): Point of the dimer to print. One of [1, 0, 2]
+                               where 1 and 2 are the end points and 0 the
+                               mid point of the dimer
+        """
         _species = species.copy()
 
         open(f'dimer_{point}.xyz', 'w').close()   # empty the file

@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import pytest
+import shutil
 from autode.atoms import Atom
 from autode.wrappers.XTB import XTB
 from autode.calculation import Calculation
@@ -138,6 +139,39 @@ def test_gradients():
     assert np.abs(gradients[0, 0]) < 1E-3
 
     os.chdir(here)
+
+
+def ___test_hessian():
+
+    mol = Molecule(smiles='O')
+    hess_calc = Calculation(name='tmp',
+                            molecule=mol,
+                            method=method,
+                            keywords=method.keywords.hess,
+                            n_cores=1)
+    hess_calc.run()
+    hessian = hess_calc.get_hessian()
+    grad_0 = hess_calc.get_gradients()
+    hess_calc.clean_up(force=True, everything=True)
+
+    # Shift the x coordinate of the first atom by a little to calculate a
+    # numerical component of the hessian
+    dx = 1E-5
+    mol.atoms[0].coord[0] += dx
+
+    shift_grad_calc = Calculation(name='tmp',
+                                  molecule=mol,
+                                  method=method,
+                                  keywords=method.keywords.grad,
+                                  n_cores=1)
+    shift_grad_calc.run()
+    grad = shift_grad_calc.get_gradients()
+    shift_grad_calc.clean_up(force=True, everything=True)
+
+    # Simple finite difference
+    assert np.isclose(hessian[0, 0],
+                      (grad[0, 0] - grad_0[0, 0])/dx,
+                      atol=1E-2)
 
 
 @testutils.work_in_zipped_dir(os.path.join(here, 'data', 'xtb.zip'))
