@@ -40,40 +40,52 @@ class PRFOptimser(Optimiser):
         self.g = super()._get_gradient(coordinates=self.x)
         return None
 
-    def _update_hessian_bofill(self, f_j, dx_j):
+    def _update_hessian_bofill(self, dg_i, dx_i, min_update_tol=1E-6):
         """
-        Update the Hessian based on the Bofill scheme. eqn. 8, 9 in ref [1]
+        Update the Hessian based on the Bofill scheme. eqn. 42-47 in ref [1]
 
         Arguments:
-            f_j (np.ndarray): Force on the previous iteration.
-                              shape = (3*n_atoms,)
+            dg_i (np.ndarray): Difference between the current gradient and the
+                               previous iteration. Δg_i, shape = (3*n_atoms,)
 
-            dx_j (np.ndarray): Shift of the coordinates. shape = (3*n_atoms,)
+            dx_i (np.ndarray): Shift of the coordinates. Δx_i ,
+                               shape = (3*n_atoms,)
+
+        Keyword Arguments:
+            min_update_tol (float): Threshold on |Δg - HΔx| below which the
+                                    Hessian will not be updated, to prevent
+                                    dividing by zero
         """
-        raise NotImplementedError
         logger.info('Updating the Hessian with the Bofill scheme')
 
-        h_j = self.H                 # H_j      current Hessian
-        f_jp1 = -self.g              # f_j+1
-        df_jp1 = f_j - f_jp1         # Δf_j+1 = f_j - f_j+1
+        # from ref. [1] the approximate Hessian (G) is self.H
+        dE_i = dg_i - np.matmul(self.H, dx_i).T     # ΔE_i = Δg_i - G_{i-1}Δx_i
 
-        df_hdx = df_jp1 - np.dot(h_j, dx_j)  # Δf_j+1 - H_j Δx_j
+        if np.linalg.norm(dE_i) < min_update_tol:
+            logger.warning(f'|Δg_i - G_i-1Δx_i| < {min_update_tol:.4f} '
+                           f'not updating the Hessian')
+            return None
 
-        delta_h_sr1 = np.outer(df_hdx, df_hdx) / np.dot(df_hdx, dx_j)
+        # G_i^MS eqn. 42 from ref. [1]
+        G_i_MS = self.H + np.outer(dE_i, dE_i) / np.dot(dE_i, dx_i)
 
-        delta_h_powell = ((np.outer(df_hdx, dx_j.T) + np.outer(dx_j, df_hdx.T))
-                          / np.outer(dx_j.T, dx_j)
-                          -
-                          ((np.outer(df_hdx.T, dx_j) * np.outer(dx_j, dx_j.T))
-                          / (np.dot(dx_j.T, dx_j)**2)))
+        # G_i^PBS eqn. 43 from ref. [1]
+        dxTdg = np.dot(dx_i, dg_i)
+        G_i_PSB = (self.H
+                   + ((np.outer(dE_i, dx_i) + np.outer(dx_i, dE_i))
+                      / np.dot(dx_i, dx_i))
+                   - (((dxTdg - np.linalg.multi_dot((dx_i, self.H, dx_i)))
+                      * np.outer(dx_i, dx_i))
+                      / np.dot(dx_i, dx_i)**2)
+                   )
 
-        phi_bofill = (np.dot(df_hdx.T, dx_j)**2
-                      / (np.dot(df_hdx.T, df_hdx) * np.dot(dx_j.T, dx_j)))
+        # ϕ from eqn. 46 from ref [1]
+        phi_bofill = 1.0 - (np.dot(dx_i, dE_i)**2
+                            / (np.dot(dx_i, dx_i)*np.dot(dE_i, dE_i)))
 
         logger.info(f'ϕ_Bofill = {phi_bofill:.3f}')
-        delta_h = phi_bofill * delta_h_sr1 + (1 - phi_bofill) * delta_h_powell
 
-        self.H = h_j + delta_h
+        self.H = (1.0 - phi_bofill) * G_i_MS + phi_bofill * G_i_PSB
         return None
 
     def step(self, calc_hessian=False, max_step=0.05, im_mode=0):
@@ -160,9 +172,9 @@ class PRFOptimser(Optimiser):
             self._hessian()
 
         else:
-            f = -self.g
+            g_i = self.g
             self._gradient()
-            self._update_hessian_bofill(f_j=f, dx_j=delta_x)
+            self._update_hessian_bofill(dg_i=self.g - g_i, dx_i=delta_x)
 
         return None
 

@@ -38,7 +38,7 @@ class PRFOptimser2D(PRFOptimser):
 def test_prfo_2d():
 
     optimiser = PRFOptimser2D(coords=np.array([-0.5, -0.2]),
-                              recalc_freq=1)
+                              recalc_freq=None)
 
     # Optimising on a test 2D surface should optimise to the 1st order
     # saddle point at (0, 0)
@@ -65,7 +65,7 @@ def test_prfo_sn2():
     sn2_tsg = ade.Molecule('sn2_ts_guess.xyz', charge=-1, solvent_name='water')
     optimiser = PRFOptimser(species=sn2_tsg,
                             method=ade.methods.XTB(),
-                            recalc_hess_every=1,
+                            recalc_hess_every=None,
                             g_tol=1E-2)
 
     optimiser.run(max_iterations=100)
