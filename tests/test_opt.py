@@ -3,6 +3,8 @@ import shutil
 import autode as ade
 import numpy as np
 from autode.opt import dic, internal_opt, internals
+from autode.opt.base import CartesianCoordinates
+from autode.opt.rfo import RFOptimiser
 from autode.geom import are_coords_reasonable
 from scipy.optimize import minimize
 
@@ -115,11 +117,12 @@ def test_inverse_dist_dic_ethane():
     assert rmsd < 1E-1
 
 
-def test_dic_opt():
+def test_dic_opt_scipy():
     """Test a simple optimisation of methane with DICs"""
 
     mol = ade.Molecule(smiles='C')
     coords = dic.DIC(mol.coordinates)
+    # coords = CartesianCoordinates(mol.coordinates)
 
     xtb = ade.methods.XTB()
 
@@ -135,8 +138,25 @@ def test_dic_opt():
                       jac=internal_opt.gradient)             # g^int
 
     # below have been checked by hand!
-    # print(result)
     # mol.print_xyz_file()
+    # print(result)
 
     assert result.success
     assert are_coords_reasonable(mol.coordinates)
+
+
+def test_cart_opt():
+    """Test a simple optimisation of methane with DICs"""
+
+    # Don't run the calculation without a working XTB install
+    if shutil.which('xtb') is None or not shutil.which('xtb').endswith('xtb'):
+        return
+
+    optimiser = RFOptimiser(species=ade.Molecule(smiles='C'),
+                            method=ade.methods.XTB(),
+                            g_tol=1E-4)
+
+    optimiser.run(max_iterations=10)
+    optimiser.species.print_xyz_file(filename='tmp.xyz')
+
+    assert np.linalg.norm(optimiser.coords.g) < 1E-2
