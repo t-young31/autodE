@@ -2,7 +2,8 @@ import shutil
 import autode as ade
 import numpy as np
 from autode.atoms import Atom
-from autode.opt.prfo_opt import PRFOptimser
+from autode.opt.prfo import PRFOptimser
+from autode.opt.base import CartesianCoordinates
 from autode.utils import work_in_tmp_dir
 
 
@@ -18,15 +19,15 @@ class PRFOptimser2D(PRFOptimser):
         """E = x^2 - y^2   -->   (d^2E/dx2)_y = 2  ; (d^2E/dy^2)_x = -2
         d^2E/dxdy = d^2E/dydx  = 0
         """
-        self.H = np.array([[2.0, 0.0],
-                           [0.0, -2.0]])
+        self.coords.H = np.array([[2.0, 0.0],
+                                  [0.0, -2.0]])
         self._gradient()
         return None
 
     def _gradient(self):
         """E = x^2 - y^2   -->   (dE/dx)_y = 2x  ; (dE/dy)_x = -2y"""
-        x, y = self.x
-        self.g = np.array([2.0*x, -2.0*y])
+        x, y = self.coords.x
+        self.coords.g = np.array([2.0*x, -2.0*y])
         return None
 
     def __init__(self, coords, recalc_freq=None):
@@ -35,7 +36,7 @@ class PRFOptimser2D(PRFOptimser):
                          method=None,
                          recalc_hess_every=recalc_freq)
 
-        self.x = coords
+        self.coords = CartesianCoordinates(coords)
 
 
 def test_prfo_2d():
@@ -48,20 +49,20 @@ def test_prfo_2d():
     # saddle point at (0, 0)
     optimiser.run()
 
-    assert np.linalg.norm(optimiser.x - np.zeros(2)) < 1E-3
+    assert np.linalg.norm(optimiser.coords.x - np.zeros(2)) < 1E-3
 
     # should also work with hessian updates on every iteration
     optimiser.recalc_hess_every = 1
-    optimiser.x = np.array([-0.5, -0.2])
+    optimiser.coords.x = np.array([-0.5, -0.2])
     optimiser.run()
 
-    assert np.linalg.norm(optimiser.x - np.zeros(2)) < 1E-3
+    assert np.linalg.norm(optimiser.coords.x - np.zeros(2)) < 1E-3
 
     # Should also be able to optimise far from the TS
-    optimiser.x = np.array([-2.5, 1.5])
+    optimiser.coords.x = np.array([-2.5, 1.5])
     optimiser.run(max_iterations=100)
 
-    assert np.linalg.norm(optimiser.x - np.zeros(2)) < 1E-3
+    assert np.linalg.norm(optimiser.coords.x - np.zeros(2)) < 1E-3
 
 
 @work_in_tmp_dir(filenames_to_copy=[], kept_file_exts=[])
@@ -92,9 +93,8 @@ def test_prfo_sn2():
 
     optimiser.run(max_iterations=100)
 
-    assert np.linalg.norm(optimiser.g) < 1E-2
-
+    assert np.linalg.norm(optimiser.coords.g) < 1E-2
     # Carbon should be trigonal planar with approx 120 °
     assert np.isclose(optimiser.species.angle(3, 2, 4), 120, atol=2)
 
-    optimiser.species.print_xyz_file(filename='tmp.xyz')
+    # optimiser.species.print_xyz_file(filename='tmp.xyz')

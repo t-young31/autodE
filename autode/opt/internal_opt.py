@@ -36,7 +36,7 @@ def energy(array, species, method, coords):
     calc.run()
 
     # Convert the Cartesian gradient into internal coordinates
-    coords.g = np.matmul(coords.B_T_inv.T, calc.get_gradients().flatten())
+    coords.g = calc.get_gradients().flatten()
     species.energy = calc.get_energy()
 
     calc.clean_up(force=True, everything=True)

@@ -15,13 +15,14 @@ import numpy as np
 import autode.exceptions as ex
 from autode.log import logger
 from autode.opt.base import Optimiser
+from autode.opt.base import CartesianCoordinates
 
 
 class PRFOptimser(Optimiser):
 
     def _hessian(self):
         """Calculate and set the Hessian and gradient"""
-        self.species.coordinates = self.x
+        self.species.coordinates = self.coords.x
 
         calc = ade.Calculation(name=f'tmp_hess',
                                molecule=self.species,
@@ -30,15 +31,15 @@ class PRFOptimser(Optimiser):
                                n_cores=ade.Config.n_cores)
         calc.run()
         self.species.energy = calc.get_energy()
-        self.H = calc.get_hessian()
-        self.g = calc.get_gradients().flatten()
+        self.coords.H = calc.get_hessian()
+        self.coords.g = calc.get_gradients().flatten()
         calc.clean_up(force=True, everything=True)
 
         return None
 
     def _gradient(self):
         """Calculate and set the gradient"""
-        self.g = super()._get_gradient(coordinates=self.x)
+        self.coords.g = super()._get_gradient(coordinates=self.coords.x)
         return None
 
     def _update_hessian_bofill(self, dg_i, dx_i, min_update_tol=1E-6):
@@ -60,7 +61,8 @@ class PRFOptimser(Optimiser):
         logger.info('Updating the Hessian with the Bofill scheme')
 
         # from ref. [1] the approximate Hessian (G) is self.H
-        dE_i = dg_i - np.matmul(self.H, dx_i).T     # ΔE_i = Δg_i - G_{i-1}Δx_i
+        G_i_1 = self.coords.H                       # G_{i-1}
+        dE_i = dg_i - np.matmul(G_i_1, dx_i).T     # ΔE_i = Δg_i - G_{i-1}Δx_i
 
         if np.linalg.norm(dE_i) < min_update_tol:
             logger.warning(f'|Δg_i - G_i-1Δx_i| < {min_update_tol:.4f} '
@@ -68,14 +70,14 @@ class PRFOptimser(Optimiser):
             return None
 
         # G_i^MS eqn. 42 from ref. [1]
-        G_i_MS = self.H + np.outer(dE_i, dE_i) / np.dot(dE_i, dx_i)
+        G_i_MS = G_i_1 + np.outer(dE_i, dE_i) / np.dot(dE_i, dx_i)
 
         # G_i^PBS eqn. 43 from ref. [1]
         dxTdg = np.dot(dx_i, dg_i)
-        G_i_PSB = (self.H
+        G_i_PSB = (G_i_1
                    + ((np.outer(dE_i, dx_i) + np.outer(dx_i, dE_i))
                       / np.dot(dx_i, dx_i))
-                   - (((dxTdg - np.linalg.multi_dot((dx_i, self.H, dx_i)))
+                   - (((dxTdg - np.linalg.multi_dot((dx_i, G_i_1, dx_i)))
                       * np.outer(dx_i, dx_i))
                       / np.dot(dx_i, dx_i)**2)
                    )
@@ -86,7 +88,8 @@ class PRFOptimser(Optimiser):
 
         logger.info(f'ϕ_Bofill = {phi_bofill:.3f}')
 
-        self.H = (1.0 - phi_bofill) * G_i_MS + phi_bofill * G_i_PSB
+        # Setting the Hessian in internal coordinates
+        self.coords._H_s = (1.0 - phi_bofill) * G_i_MS + phi_bofill * G_i_PSB
         return None
 
     def step(self, calc_hessian=False, max_step=0.05, im_mode=0):
@@ -103,7 +106,7 @@ class PRFOptimser(Optimiser):
         """
         # Eigenvalues (\tilde{H}_kk in ref [1]) and eigenvectors (V in ref [1])
         # of the Hessian matrix
-        lmda, v = np.linalg.eigh(self.H)
+        lmda, v = np.linalg.eigh(self.coords.H)
 
         if np.min(lmda) > 0:
             logger.warning('Hessian had no negative eigenvalues, cannot '
@@ -114,7 +117,7 @@ class PRFOptimser(Optimiser):
                     f'λ={lmda[im_mode]:.4f}')
 
         # Gradient in the eigenbasis of the Hessian. egn 49 in ref. 50
-        g_tilde = np.matmul(v.T, self.g)
+        g_tilde = np.matmul(v.T, self.coords.g)
 
         # Initialised step in the Hessian eigenbasis
         s_tilde = np.zeros_like(g_tilde)
@@ -154,28 +157,28 @@ class PRFOptimser(Optimiser):
         s_tilde[non_mode_lmda] = augn_v[:-1, 0] / augn_v[-1, 0]
 
         # Transform back from the eigenbasis with eqn. 52 in ref [1]
-        delta_x = np.matmul(v, s_tilde)
+        delta_s = np.matmul(v, s_tilde)
 
-        if np.max(delta_x) > 100 * max_step:
+        if np.max(delta_s) > 100 * max_step:
             raise ex.OptimisationFailed('About to perform a huge unreasonable '
                                         'step!')
 
-        if np.max(delta_x) > max_step:
-            logger.warning(f'Maximum step size = {np.max(delta_x):.4f} Å '
+        if np.max(delta_s) > max_step:
+            logger.warning(f'Maximum step size = {np.max(delta_s):.4f} Å '
                            f'was above the maximum allowed {max_step:.4f} Å '
                            f'will scale down')
-            delta_x *= max_step / np.max(delta_x)
+            delta_s *= max_step / np.max(delta_s)
 
-        logger.info(f'Maximum step size = {np.max(delta_x):.4f} Å')
-        self.x += delta_x
+        logger.info(f'Maximum step size = {np.max(delta_s):.4f} Å')
+        self.coords.s = self.coords.s + delta_s
 
         if calc_hessian:
             self._hessian()
 
         else:
-            g_i = self.g
+            g_i = self.coords.g
             self._gradient()
-            self._update_hessian_bofill(dg_i=self.g - g_i, dx_i=delta_x)
+            self._update_hessian_bofill(dg_i=self.coords.g - g_i, dx_i=delta_s)
 
         return None
 
@@ -191,7 +194,7 @@ class PRFOptimser(Optimiser):
         self._hessian()
 
         iteration = 0
-        while (np.linalg.norm(self.g) > self.g_tol
+        while (np.linalg.norm(self.coords.g) > self.g_tol
                and iteration < max_iterations):
 
             if iteration % self.recalc_hess_every == 0:
@@ -203,12 +206,15 @@ class PRFOptimser(Optimiser):
                 self.step()
 
             logger.info(f'Iteration {iteration}  '
-                        f'|g| = {np.linalg.norm(self.g):.4f} Ha / Å')
+                        f'|g| = {np.linalg.norm(self.coords.g):.4f} Ha / Å')
             iteration += 1
 
         return None
 
-    def __init__(self, species, method, g_tol=1E-3, recalc_hess_every=None):
+    def __init__(self, species, method,
+                 coordinate_type=CartesianCoordinates,
+                 g_tol=1E-3,
+                 recalc_hess_every=None):
         """
         Partitioned rational function optimiser initialised from a good guess
         of a TS, with at least one imaginary mode
@@ -228,9 +234,7 @@ class PRFOptimser(Optimiser):
         """
         super().__init__(species=species.copy(), method=method)
 
-        self.x = species.coordinates.flatten()
-        self.H = None
-        self.g = None
+        self.coords = coordinate_type(species.coordinates)
 
         self.g_tol = g_tol
 
