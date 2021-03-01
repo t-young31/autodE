@@ -281,8 +281,19 @@ class Species:
 
     @requires_atoms()
     def distance(self, i: int, j: int):
-        """Get the distance between two atoms in the species"""
+        """Get the distance (Å) between two atoms in the species"""
         return np.linalg.norm(self.atoms[i].coord - self.atoms[j].coord)
+
+    @requires_atoms()
+    def angle(self, i: int, j: int, k: int):
+        """Get the angle i-j-k (degrees) between three atoms"""
+        v_ji = self.atoms[i].coord - self.atoms[j].coord
+        v_jk = self.atoms[k].coord - self.atoms[j].coord
+
+        angle = np.arccos(np.dot(v_ji, v_jk)
+                          / (np.linalg.norm(v_ji) * np.linalg.norm(v_jk)))
+
+        return np.rad2deg(angle)
 
     @work_in('conformers')
     def find_lowest_energy_conformer(self, lmethod=None, hmethod=None):

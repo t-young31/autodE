@@ -29,6 +29,7 @@ class PRFOptimser(Optimiser):
                                keywords=self.method.keywords.hess,
                                n_cores=ade.Config.n_cores)
         calc.run()
+        self.species.energy = calc.get_energy()
         self.H = calc.get_hessian()
         self.g = calc.get_gradients().flatten()
         calc.clean_up(force=True, everything=True)
