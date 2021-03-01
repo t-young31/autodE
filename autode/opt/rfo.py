@@ -11,6 +11,7 @@ g : gradient
 import numpy as np
 from autode.log import logger
 from autode.opt.base import Optimiser, CartesianCoordinates
+from scipy.optimize._hessian_update_strategy import BFGS as BFGS_updater
 
 
 class RFOptimiser(Optimiser):
@@ -33,6 +34,8 @@ class RFOptimiser(Optimiser):
         calc.run()
         self.species.energy = calc.get_energy()
         self.coords.H = calc.get_hessian()
+        self.bfgs_updater.B = self.coords.H.copy()
+
         self.coords.g = calc.get_gradients().flatten()
         calc.clean_up(force=True, everything=True)
 
@@ -52,15 +55,10 @@ class RFOptimiser(Optimiser):
         """
 
         logger.info('Updating the Hessian with the BFGS scheme')
-        G_i_1 = self.coords.H.copy()                                 # G_{i-1}
 
-        # G_i^BFGS from eqn. 44 in ref [1]
-        G_i = (G_i_1
-               + (np.outer(dg_i, dg_i)/np.dot(dg_i, ds_i))
-               - (np.linalg.multi_dot((G_i_1, np.outer(ds_i, ds_i), G_i_1.T))
-                  / np.dot(ds_i, np.matmul(G_i_1, ds_i))))
+        self.bfgs_updater.update(delta_grad=dg_i, delta_x=ds_i)
+        self.coords.H = self.bfgs_updater.B.copy()
 
-        self.coords.H = G_i
         return None
 
     def step(self, max_step=0.05):
@@ -98,9 +96,7 @@ class RFOptimiser(Optimiser):
 
         g_i = self.coords.g.copy()   # Current gradient
         self._gradient()
-        self._estimate_hessian()
-        # TODO: BFGS Hessian update
-        # self._update_hessian_bfgs(dg_i=self.coords.g - g_i, ds_i=delta_s)
+        self._update_hessian_bfgs(dg_i=self.coords.g - g_i, ds_i=delta_s)
 
         return None
 
@@ -145,5 +141,8 @@ class RFOptimiser(Optimiser):
         super().__init__(species=species.copy(), method=method)
 
         self.coords = coordinate_type(species.coordinates)
+        self.bfgs_updater = BFGS_updater(exception_strategy='damp_update')
+        self.bfgs_updater.initialize(n=len(self.coords.s),
+                                     approx_type='hess')
 
         self.g_tol = g_tol

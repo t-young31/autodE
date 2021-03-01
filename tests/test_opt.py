@@ -157,6 +157,6 @@ def test_cart_opt():
                             g_tol=1E-4)
 
     optimiser.run(max_iterations=10)
-    optimiser.species.print_xyz_file(filename='tmp.xyz')
+    # optimiser.species.print_xyz_file(filename='tmp.xyz')
 
-    assert np.linalg.norm(optimiser.coords.g) < 1E-2
+    assert np.linalg.norm(optimiser.coords.g) < 1E-3
