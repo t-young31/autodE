@@ -1,7 +1,7 @@
 import pytest
 import autode as ade
 import numpy as np
-from autode.opt import dic, opt, internals
+from autode.opt import dic, internal_opt, internals
 from autode.geom import are_coords_reasonable
 from scipy.optimize import minimize
 
@@ -133,12 +133,12 @@ def test_dic_opt():
 
     xtb = ade.methods.XTB()
 
-    result = minimize(fun=opt.energy,
+    result = minimize(fun=internal_opt.energy,
                       x0=coords.s,                  # s
                       args=(mol, xtb, coords),
                       method='BFGS',
                       options={'gtol': 1E-3},
-                      jac=opt.gradient)             # g^int
+                      jac=internal_opt.gradient)             # g^int
 
     # below have been checked by hand!
     # print(result)

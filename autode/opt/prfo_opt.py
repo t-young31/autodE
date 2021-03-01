@@ -1,15 +1,14 @@
 """
 Partitioned rational function optimisation method (P-RFO) TS optimisation
 algorithm follows the notation from
-1. https://aip.scitation.org/doi/10.1063/1.2104507
+1. https://aip.scitation.org/doi/10.1063/1.1515483
 
 -------------------------------------------------------
 x : cartesian coordinates
 H : Hessian matrix 3N x 3N for N atoms
-u : eigenvector of the Hessian matrix
-f : -g i.e. negative of the gradient
+v : eigenvectors of the Hessian matrix (columns)
+g : gradient
 lmda : λ, eigenvectors of the Hessian matrix
-gamma : shift factor
 """
 import autode as ade
 import numpy as np
@@ -77,53 +76,72 @@ class PRFOptimser(Optimiser):
         self.H = h_j + delta_h
         return None
 
-    def step(self, calc_hessian=False, max_step=0.05):
+    def step(self, calc_hessian=False, max_step=0.05, im_mode=0):
         """
         Do a single PRFO step
+
+        Keyword Arguments:
+            calc_hessian (bool):
+            max_step (float):
+            im_mode (int):
 
         Raises:
             (autode.exceptions.OptimisationFailed):
         """
-        lmda, u = np.linalg.eigh(self.H)  # Eigenvalues and eigenvectors
-        f = -self.g                       # force
+        # Eigenvalues (\tilde{H}_kk in ref [1]) and eigenvectors (V in ref [1])
+        # of the Hessian matrix
+        lmda, v = np.linalg.eigh(self.H)
 
         if np.min(lmda) > 0:
             logger.warning('Hessian had no negative eigenvalues, cannot '
-                           'follow the to a TS')
+                           'follow to a TS')
             raise ex.OptimisationFailed
 
-        # TODO: choose mode (k) with the maximum overlap with bond rearr
-        k = 0
-        logger.info(f'Following mode {k} with λ={lmda[k]:.3f}')
+        logger.info(f'Maximising along mode {int(im_mode)} with '
+                    f'λ={lmda[im_mode]:.4f}')
 
-        u_f = np.matmul(u.T, f)    # uTf
+        # Gradient in the eigenbasis of the Hessian. egn 49 in ref. 50
+        g_tilde = np.matmul(v.T, self.g)
 
-        # matrix to determine the shift on the lowest eigenvector
-        m_p = np.array([[lmda[k], -u_f[k]],
-                        [-u_f[k],  0.0]])
-        # largest eigenvalue of the above array. eqn. 5 in ref. [1] scaled by
-        # the final element of the eigenvector
-        gamma_p = np.linalg.eigvalsh(m_p)[-1]
+        # Initialised step in the Hessian eigenbasis
+        s_tilde = np.zeros_like(g_tilde)
 
-        # Initialise a blank array to shift the coordinates by
-        delta_x = np.zeros_like(self.x)
+        # For a step in Cartesian coordinates the Hessian will have zero
+        # eigenvalues for translation/rotation - keep track of them
+        non_zero_lmda = np.where(np.abs(lmda) > 1E-8)[0]
 
-        # eqn. 7 from ref [1]
-        delta_x += u_f[k] * u[k] / (lmda[k] - gamma_p)
+        # Augmented Hessian 1 along the imaginary mode to maximise, with the
+        # form (see eqn. 59 in ref [1]):
+        #  (\tilde{H}_11  \tilde{g}_1) (\tilde{s}_1)  =      (\tilde{s}_1)
+        #  (                         ) (           )  =  ν_R (           )
+        #  (\tilde{g}_1        0     ) (    1      )         (     1     )
+        #
+        aug1 = np.array([[lmda[im_mode], g_tilde[im_mode]],
+                         [g_tilde[im_mode], 0.0]])
+        _, aug1_v = np.linalg.eigh(aug1)
 
-        not_k_idx = [idx for idx in range(len(lmda)) if idx != k]
+        # component of the step along the imaginary mode is the first element
+        # of the eigenvector with the largest eigenvalue (1), scaled by the
+        # final element
+        s_tilde[im_mode] = aug1_v[0, 1] / aug1_v[1, 1]
 
-        # diagonals including a trailing zero
-        m_n = np.diag(np.concatenate((lmda[not_k_idx], np.zeros(1))))
-        m_n[-1, :-1] = -u_f[not_k_idx]     # final row
-        m_n[:-1, -1] = -u_f[not_k_idx]     # final column
+        # Augmented Hessian along all other modes with non-zero eigenvalues,
+        # that are also not the imaginary mode to be followed
+        non_mode_lmda = np.delete(non_zero_lmda, [im_mode])
 
-        # smallest eigenvalue of the m_n array, which should be the first
-        gamma_n = np.linalg.eigvalsh(m_n)[0]
+        # see eqn. 60 in ref. [1] for the structure of this matrix!
+        augn = np.diag(np.concatenate((lmda[non_mode_lmda], np.zeros(1))))
+        augn[:-1, -1] = g_tilde[non_mode_lmda]
+        augn[-1, :-1] = g_tilde[non_mode_lmda]
 
-        # remaining part of eqn. 7 from ref [1]
-        for i in not_k_idx:
-            delta_x += u_f[i] * u[i] / (lmda[i] - gamma_n)
+        _, augn_v = np.linalg.eigh(augn)
+
+        # The step along all other components is then the all but the final
+        # component of the eigenvector with the smallest eigenvalue (0)
+        s_tilde[non_mode_lmda] = augn_v[:-1, 0] / augn_v[-1, 0]
+
+        # Transform back from the eigenbasis with eqn. 52 in ref [1]
+        delta_x = np.matmul(v, s_tilde)
 
         if np.max(delta_x) > 100 * max_step:
             raise ex.OptimisationFailed('About to perform a huge unreasonable '
@@ -142,6 +160,7 @@ class PRFOptimser(Optimiser):
             self._hessian()
 
         else:
+            f = -self.g
             self._gradient()
             self._update_hessian_bofill(f_j=f, dx_j=delta_x)
 
