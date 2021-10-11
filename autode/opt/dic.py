@@ -28,6 +28,15 @@ class DIC(InternalCoordinates):
 
     @staticmethod
     def U(primitives: PIC) -> np.ndarray:
+        """
+        Transform matrix
+
+        Arguments:
+            primitives (autode.opt.internals.PIC):
+
+        Returns:
+            (np.ndarray): U
+        """
 
         B_q = primitives.B
         G = np.matmul(B_q, B_q.T)
@@ -44,7 +53,8 @@ class DIC(InternalCoordinates):
                        primitive_type: PIC = InverseDistances):
         """
         Convert cartesian coordinates to primitives then to delocalised
-        internal coordinates (DICs)
+        internal coordinates (DICs), of which there should be 3N-6 for a
+        polyatomic system with N atoms
 
         Arguments:
             x (autode.opt.cartesian.CartesianCoordinates): Cartesian coordinates
@@ -94,6 +104,22 @@ class DIC(InternalCoordinates):
 
         raise ValueError(f'Unknown conversion to {value}')
 
+    def _new_s_from_kwargs(self, kwargs):
+        """Determine a new set of DICs from some keyword arguments"""
+
+        if 'new' in kwargs:
+            if kwargs['new'].shape != self.shape:
+                raise ValueError('To update the internal coordinates a new '
+                                 f'set with shape {self.shape} is needed, but '
+                                 f'had {kwargs["new"].shape}')
+            return kwargs['new']
+
+        elif 'delta' in kwargs:
+            return np.array(self, copy=True) + kwargs['delta']
+        else:
+            raise ValueError('Expecting one of: *new* or *delta* as keyword '
+                             f'arguments. Had only {kwargs}')
+
     def update(self, *args, **kwargs) -> None:
         """
         Set some new internal coordinates and update the Cartesian coordinates
@@ -111,21 +137,11 @@ class DIC(InternalCoordinates):
             delta (int | float | np.ndarray): Difference between the current
                                               and new DICs. Must be
                                               broadcastable into self.shape.
+        Raises:
+            (RuntimeError): If the transformation diverges
         """
         start_time = time()
-
-        if 'new' in kwargs:
-            s_new = kwargs['new']
-            if s_new.shape != self.shape:
-                raise ValueError('To update the internal coordinates a new '
-                                 f'set with shape {self.shape} is needed, but '
-                                 f'had {s_new.shape}')
-
-        elif 'delta' in kwargs:
-            s_new = np.array(self, copy=True) + kwargs['delta']
-        else:
-            raise ValueError('Expecting one of: *new* or *delta* as keyword '
-                             f'arguments. Had only {kwargs}')
+        s_new = self._new_s_from_kwargs(kwargs)
 
         # Initialise
         s_k, x_k = np.array(self, copy=True), np.array(self._x, copy=True)

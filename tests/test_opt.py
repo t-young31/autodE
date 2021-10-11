@@ -1,9 +1,17 @@
-import numpy as np
 import pytest
-
+import numpy as np
+from autode import Molecule, Atom
 from autode.opt.internals import InverseDistances
 from autode.opt.primitives import InverseDistance
 from autode.opt.cartesian import CartesianCoordinates
+
+
+def methane_mol():
+    return Molecule(atoms=[Atom('C',  0.11105, -0.21307,  0.00000),
+                           Atom('H',  1.18105, -0.21307,  0.00000),
+                           Atom('H', -0.24562, -0.89375,  0.74456),
+                           Atom('H', -0.24562, -0.51754, -0.96176),
+                           Atom('H', -0.24562,  0.77207,  0.21720)])
 
 
 def test_primitives():
@@ -53,7 +61,7 @@ def test_cart_to_dic():
     x -= 0.1
 
 
-def test_dic_to_cart():
+def test_simple_dic_to_cart():
     arr = np.array([[0.0, 0.0, 0.0],
                     [2.0, 0.0, 0.0]])
 
@@ -68,6 +76,9 @@ def test_dic_to_cart():
     # Updating the DICs should afford cartesian coordinates that are
     # ~1.7 Å apart (1/r = 0.6)
     dic.update(delta=0.1)
+    assert dic.shape == (1,)
+    assert np.isclose(dic[0], 0.6)
+
     arr_update = dic.to('cart').reshape((2, 3))
 
     assert np.isclose(np.linalg.norm(arr_update[0, :] - arr_update[1, :]),
@@ -86,3 +97,31 @@ def test_dic_to_cart():
 
     with pytest.raises(Exception):
         dic.update(delta=np.array([0, 1]))      # Wrong shape
+
+
+def test_methane_cart_to_dic():
+
+    x = CartesianCoordinates(methane_mol().coordinates)
+    dic = x.to('dic')
+    assert len(dic) == 9   # 3N-6 for N=5
+
+    dic.update(delta=np.array([0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]))
+
+    # Cartesian coordinates should be close to the starting ones
+    assert np.linalg.norm(x - dic.to('cart')) < 0.5
+
+
+def test_co2_cart_to_dic():
+
+    arr = np.array([[-1.31254, 0.34625, -0.00000],
+                    [-0.11672, 0.30964, 0.00000],
+                    [1.07904, 0.27311, 0.00000]])
+
+    x = CartesianCoordinates(arr)
+    dic = x.to('dic')
+    assert len(dic) == 3
+
+    # Applying a shift to the internal coordinates that are close to linear
+    # can break the back transformation to Cartesians
+    with pytest.raises(RuntimeError):
+        dic.update(delta=np.array([0.0, 0.0, 0.1]))
