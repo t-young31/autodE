@@ -33,21 +33,21 @@ class _OptCoordinates(ValueArray, ABC):
 
     @property
     def g(self) -> np.ndarray:
-        """Gradient of the energy"""
+        """Gradient of the energy: {dE/dx_i}"""
         return self._g
 
     @property
     def h(self) -> np.ndarray:
-        """Second derivatives of the energy"""
+        """Second derivatives of the energy: {d^2E/dx_idx_j^2}"""
         return self._h
 
     @g.setter
-    def g(self, value) -> np.ndarray:
+    def g(self, value: np.ndarray):
         """Set the gradient of the energy"""
         self._g = value
 
     @h.setter
-    def h(self, value) -> np.ndarray:
+    def h(self, value: np.ndarray):
         """Set the second derivatives of the energy"""
         self._h = value
 
