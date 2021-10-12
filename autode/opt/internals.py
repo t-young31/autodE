@@ -1,3 +1,11 @@
+"""
+Internal coordinates. Notation follows
+
+
+x : Cartesian coordinates
+B : Wilson B matrix
+q : Primitive internal coordinates
+"""
 import numpy as np
 from abc import ABC, abstractmethod
 from autode.opt.coordinates import _OptCoordinates
