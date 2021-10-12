@@ -127,7 +127,7 @@ def test_co2_cart_to_dic():
         dic.update(delta=np.array([0.0, 0.0, 0.1]))
 
 
-def test_grad_hess_transform_linear():
+def test_grad_transform_linear():
 
     k = 1.0
     r0 = 1.0
@@ -181,4 +181,59 @@ def test_grad_hess_transform_linear():
                       -1/0.5**2 * grad(coords)[3])
 
 
+def test_hess_transform_linear():
 
+    k = 1.0
+    coords = np.array([[0.0, 0.0, 0.0],
+                       [1.0, 0.0, 0.0]])
+
+    x = CartesianCoordinates(coords)
+
+    def energy(_x, r0=1):
+        """Harmonic potential: E = k(r-r0)^2"""
+        _x = _x.reshape((-1, 3))
+        r = np.linalg.norm(_x[0] - _x[1])
+        return 0.5 * k * (r - r0)**2
+
+    def hessian(_x):
+        _x = _x.reshape((-1, 3))
+        delta_x = _x[0, 0] - _x[1, 0]
+
+        r = np.linalg.norm(_x[0] - _x[1])
+        h_oo = k*(1 - 1/r + delta_x**2/r**3)
+
+        _h = np.zeros(shape=(6, 6))
+        _h[0, 0] = _h[3, 3] = h_oo
+        _h[0, 3] = _h[3, 0] = -h_oo
+
+        return _h
+
+    def g_i(_x, i, h=1E-8):
+        """Numerical graident"""
+        x_ph = np.array(_x, copy=True)
+        x_ph[i] += h
+        return (energy(x_ph) - energy(_x)) / h
+
+    def h_ij(_x, i, j, h=1E-8):
+
+        x_ph = np.array(_x, copy=True)
+        x_ph[j] += h
+
+        return (g_i(x_ph, i=i) - g_i(_x, i=i)) / h
+
+    def num_hess(_x):
+        _h = np.zeros(shape=(6, 6))
+
+        for i in range(6):
+            for j in range(6):
+
+                _h[i, j] = h_ij(_x, i, j)
+
+        return _h
+
+    assert np.linalg.norm(hessian(x) - num_hess(x)) < 1E-7
+    x.h = hessian(coords)
+
+    dic = x.to('dic')
+    assert dic.h.shape == (1, 1)         # 1x1 internal Hessian
+    assert np.isclose(dic.h[0, 0], k)    # should be ~k

@@ -83,7 +83,9 @@ class DIC(InternalCoordinates):
 
         # and Hessian
         if x.h is not None:
-            s.h = None                          # TODO: Implement hessian
+            # NOTE: This is not the full transformation as noted in
+            # 10.1063/1.471864 only an approximate Hessian is required(?)
+            s.h = np.linalg.multi_dot((s.B_T_inv.T, x.h, s.B_T_inv))
 
         logger.info(f'Transformed in      ...{time() - start_time:.4f} s')
         return s
