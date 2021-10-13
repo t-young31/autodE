@@ -1,9 +1,12 @@
 import pytest
+import shutil
 import numpy as np
 from autode import Molecule, Atom
+from autode.methods import XTB
 from autode.opt.internals import InverseDistances
 from autode.opt.primitives import InverseDistance
 from autode.opt.cartesian import CartesianCoordinates
+from autode.opt.optimisers import CartesianSteepestDecent
 
 
 def methane_mol():
@@ -237,3 +240,15 @@ def test_hess_transform_linear():
     dic = x.to('dic')
     assert dic.h.shape == (1, 1)         # 1x1 internal Hessian
     assert np.isclose(dic.h[0, 0], k)    # should be ~k
+
+
+def test_xtb_h2_cart_opt():
+
+    mol = Molecule(name='h2', atoms=[Atom('H'), Atom('H', x=1.5)])
+
+    # Don't run the calculation without a working XTB install
+    if shutil.which('xtb') is None or not shutil.which('xtb').endswith('xtb'):
+        return
+
+    CartesianSteepestDecent.optimise(mol, method=XTB(), maxiter=50)
+    assert np.isclose(mol.distance(0, 1), 0.777, atol=0.1)
