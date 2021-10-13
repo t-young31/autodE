@@ -34,8 +34,8 @@ class Optimiser(ABC):
                  method:  'autode.wrappers.base.Method',
                  maxiter: int = 500,
                  gtol:    Union[float, GradientNorm] = GradientNorm(1E-3, units='Ha Å-1'),
-                 etol:    Union[float, PotentialEnergy] = PotentialEnergy(1E-4, units='Ha')
-                 ) -> None:
+                 etol:    Union[float, PotentialEnergy] = PotentialEnergy(1E-4, units='Ha'),
+                 **kwargs) -> None:
         """
         Convenience function for constructing and running an optimiser
 
@@ -45,6 +45,7 @@ class Optimiser(ABC):
 
             method (autode.methods.Method):
 
+        Keyword Arguments
             maxiter (int): Maximum number of iteration to perform
 
             gtol (float | autode.values.GradientNorm): Tolerance on RMS(|∇E|)
@@ -53,9 +54,11 @@ class Optimiser(ABC):
 
             etol (float | autode.values.PotentialEnergy): Tolerance on |∆E|
                  between two consecutive iterations of the optimiser
+
+            kwargs (Any): Additional keyword arguments to pass on
         """
 
-        optimiser = cls(maxiter=maxiter, gtol=gtol, etol=etol)
+        optimiser = cls(maxiter=maxiter, gtol=gtol, etol=etol, **kwargs)
         optimiser.run(species, method)
 
         return None
@@ -88,6 +91,7 @@ class Optimiser(ABC):
 
             self._step()             # Updates self._species.coordinates
             self.iteration += 1
+            self._update_gradient()  # TODO: implement
 
         return None
 
@@ -127,3 +131,30 @@ class Optimiser(ABC):
     @abstractmethod
     def _step(self):
         """Take a step with this optimiser"""
+
+
+class CartesianSteepestDecent(Optimiser):
+
+    def __init__(self, maxiter, gtol, etol, step_size=0.02, **kwargs):
+        """
+        Steepest decent optimiser in Cartesian coordinates
+
+        Arguments:
+            step_size (float): Size of the step to take. Units of distance
+        """
+        super().__init__(maxiter=maxiter, gtol=gtol, etol=etol, **kwargs)
+
+        self.step_size = step_size
+
+    def _step(self):
+        """
+        Take a steepest decent step::
+
+        .. math::
+
+            x_{i+1} = x_{i} - d \nabla E
+
+        where d is the step size.
+        """
+
+
