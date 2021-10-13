@@ -3,10 +3,12 @@ import shutil
 import numpy as np
 from autode import Molecule, Atom
 from autode.methods import XTB
+from autode.values import GradientNorm, PotentialEnergy
 from autode.opt.internals import InverseDistances
 from autode.opt.primitives import InverseDistance
 from autode.opt.cartesian import CartesianCoordinates
 from autode.opt.optimisers import CartesianSteepestDecent
+from autode.utils import work_in_tmp_dir
 
 
 def methane_mol():
@@ -242,6 +244,40 @@ def test_hess_transform_linear():
     assert np.isclose(dic.h[0, 0], k)    # should be ~k
 
 
+def sample_cartesian_optimiser():
+    return CartesianSteepestDecent(maxiter=1,
+                                   gtol=GradientNorm(0.1),
+                                   etol=PotentialEnergy(0.1))
+
+
+def test_optimiser_construct():
+
+    # Optimiser needs a Species
+    with pytest.raises(ValueError):
+        sample_cartesian_optimiser().run(None, XTB())
+
+    # also a method
+    with pytest.raises(ValueError):
+        sample_cartesian_optimiser().run(methane_mol(), None)
+
+    # Optimiser needs valid arguments
+    with pytest.raises(ValueError):
+        CartesianSteepestDecent(maxiter=0,
+                                gtol=GradientNorm(0.1),
+                                etol=PotentialEnergy(0.1))
+
+    with pytest.raises(ValueError):
+        CartesianSteepestDecent(maxiter=0,
+                                gtol=GradientNorm(-0.1),
+                                etol=PotentialEnergy(0.1))
+
+    with pytest.raises(ValueError):
+        CartesianSteepestDecent(maxiter=0,
+                                gtol=GradientNorm(0.1),
+                                etol=PotentialEnergy(-0.1))
+
+
+@work_in_tmp_dir()
 def test_xtb_h2_cart_opt():
 
     mol = Molecule(name='h2', atoms=[Atom('H'), Atom('H', x=1.5)])
@@ -251,4 +287,6 @@ def test_xtb_h2_cart_opt():
         return
 
     CartesianSteepestDecent.optimise(mol, method=XTB(), maxiter=50)
+
+    # Optimised H-H distance is ~0.7 Å
     assert np.isclose(mol.distance(0, 1), 0.777, atol=0.1)

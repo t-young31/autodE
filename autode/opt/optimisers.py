@@ -33,6 +33,8 @@ class Optimiser(ABC):
         self.gtol = GradientNorm(gtol)                     # Gradient tolerance
         self.etol = PotentialEnergy(etol)                  # Energy tolerance
 
+        self._check_init_params()
+
         self._ncores:  int = Config.n_cores
 
         self._coords:  Optional['autode.opt.coordinates.OptCoordinates'] = None
@@ -41,6 +43,27 @@ class Optimiser(ABC):
 
         # Previous energy, used to check convergence of the energy
         self._e_prev = PotentialEnergy(np.inf, units='Ha')
+
+    def _check_init_params(self) -> None:
+        """
+        Check initial values of the properties/attributes
+
+        Raises:
+            (ValueError):
+        """
+        if self.maxiter <= 0:
+            raise ValueError('An optimiser must be able to run at least one '
+                             f'step, but maxiter = {self.maxiter}')
+
+        if self.gtol <= 0:
+            raise ValueError('Tolerance on the gradient (RMS(|∇E|)) must be '
+                             f'positive. Had: gtol={self.gtol}')
+
+        if self.etol <= 0:
+            raise ValueError('Tolerance on the energy change is absolute so '
+                             f'must be positive. Had etol={self.etol}')
+
+        return None
 
     @classmethod
     def optimise(cls,
@@ -80,8 +103,8 @@ class Optimiser(ABC):
         return None
 
     def run(self,
-            species: Optional['autode.species.Species'],
-            method:  Optional['autode.wrappers.base.Method'],
+            species: 'autode.species.Species',
+            method:  'autode.wrappers.base.Method',
             n_cores: Optional[int] = None
             ) -> None:
         """
@@ -106,19 +129,18 @@ class Optimiser(ABC):
                              f'optimisation. Had: {self._species} and '
                              f'{self._method}')
 
-        self._initalise_coords()
+        self._initialise_coords()
         logger.info(f'Optimising {self._species.name}')
-
-        print(self.converged, self.iteration)
 
         while not self.converged:
 
             self._update_gradient()   # Updates self._coords.g
             self._step()              # Updates self._species.coordinates
+
             self.iteration += 1
             self._e_prev = self._species.energy
 
-            if self.iteration >= self.maxiter:
+            if self.iteration == self.maxiter:
                 logger.warning(f'Reached the maximum number of iterations '
                                f'*{self.maxiter}*. Did not converge')
                 return
@@ -202,7 +224,7 @@ class Optimiser(ABC):
         """
 
     @abstractmethod
-    def _initalise_coords(self) -> None:
+    def _initialise_coords(self) -> None:
         """Initialise self._coords from self._species"""
 
 
@@ -219,7 +241,7 @@ class CartesianSteepestDecent(Optimiser):
 
         self.step_size = step_size
 
-    def _initalise_coords(self) -> None:
+    def _initialise_coords(self) -> None:
         """
         Initialise a set of cartesian coordinates. As a species' coordinates
         are already Cartesian there is nothing special to do
@@ -236,7 +258,4 @@ class CartesianSteepestDecent(Optimiser):
 
         where d is the step size.
         """
-        print(self._species.distance(0, 1))
         self._coords -= self.step_size * self._coords.g
-
-
