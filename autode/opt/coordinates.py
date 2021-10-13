@@ -4,7 +4,7 @@ from autode.units import (ang, nm, pm, m)
 from autode.values import ValueArray
 
 
-class _OptCoordinates(ValueArray, ABC):
+class OptCoordinates(ValueArray, ABC):
     """Coordinates used to perform optimisations"""
 
     implemented_units = [ang, nm, pm, m]
@@ -13,7 +13,7 @@ class _OptCoordinates(ValueArray, ABC):
     def __repr__(self):
         """Representation of these coordinates"""
 
-    def __new__(cls, input_array, units) -> '_OptCoordinates':
+    def __new__(cls, input_array, units) -> 'OptCoordinates':
         """New instance of these coordinates"""
 
         arr = super().__new__(cls, input_array, units)
@@ -23,7 +23,7 @@ class _OptCoordinates(ValueArray, ABC):
 
         return arr
 
-    def __array_finalize__(self, obj: '_OptCoordinates') -> None:
+    def __array_finalize__(self, obj: 'OptCoordinates') -> None:
         """See https://numpy.org/doc/stable/user/basics.subclassing.html"""
 
         for attr in ('units', '_g', '_h', 'B', 'B_T_inv'):

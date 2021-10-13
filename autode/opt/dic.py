@@ -90,7 +90,7 @@ class DIC(InternalCoordinates):
         logger.info(f'Transformed in      ...{time() - start_time:.4f} s')
         return s
 
-    def to(self, value: str) -> 'autode.opt.coordinates._OptCoordinates':
+    def to(self, value: str) -> 'autode.opt.coordinates.OptCoordinates':
         """
         Convert these DICs to another type of coordinate
 
@@ -98,7 +98,7 @@ class DIC(InternalCoordinates):
             value (str):
 
         Returns:
-            (autode.opt.coordinates._OptCoordinates): Coordinates
+            (autode.opt.coordinates.OptCoordinates): Coordinates
         """
 
         if value.lower() in ('x', 'cart', 'cartesian'):
