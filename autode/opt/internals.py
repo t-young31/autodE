@@ -8,11 +8,11 @@ q : Primitive internal coordinates
 """
 import numpy as np
 from abc import ABC, abstractmethod
-from autode.opt.coordinates import _OptCoordinates
+from autode.opt.coordinates import OptCoordinates
 from autode.opt.primitives import InverseDistance
 
 
-class InternalCoordinates(_OptCoordinates):
+class InternalCoordinates(OptCoordinates):
 
     def __new__(cls, input_array) -> 'InternalCoordinates':
         """New instance of these internal coordinates"""
@@ -24,7 +24,7 @@ class InternalCoordinates(_OptCoordinates):
 
         return arr
 
-    def __array_finalize__(self, obj: '_OptCoordinates') -> None:
+    def __array_finalize__(self, obj: 'OptCoordinates') -> None:
         """See https://numpy.org/doc/stable/user/basics.subclassing.html"""
         self._x = getattr(obj, '_x', None)
         self.primitive_type = getattr(obj, 'primitive_type', None)

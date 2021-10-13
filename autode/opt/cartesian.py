@@ -1,10 +1,10 @@
 import numpy as np
 from autode.log import logger
-from autode.opt.coordinates import _OptCoordinates
+from autode.opt.coordinates import OptCoordinates
 from autode.opt.dic import DIC
 
 
-class CartesianCoordinates(_OptCoordinates):
+class CartesianCoordinates(OptCoordinates):
     """Flat Cartesian coordinates shape = (3 × n_atoms, )"""
 
     def __repr__(self):
@@ -26,7 +26,7 @@ class CartesianCoordinates(_OptCoordinates):
 
         return super().__array_finalize__(obj)
 
-    def to(self, value: str) -> _OptCoordinates:
+    def to(self, value: str) -> OptCoordinates:
         """
         Allow for the transformation between cartesian and internal coordinates
         e.g. delocalised internal coordinates
@@ -39,7 +39,10 @@ class CartesianCoordinates(_OptCoordinates):
         """
         logger.info(f'Transforming Cartesian coordinates to {value}')
 
-        if value in ('dic', 'delocalised internal coordinates'):
+        if value in ('cart', 'cartesian'):
+            return self
+
+        elif value in ('dic', 'delocalised internal coordinates'):
             return DIC.from_cartesian(self)
 
         # ----------- Implement other internals here ------------
