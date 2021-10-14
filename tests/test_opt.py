@@ -338,7 +338,8 @@ def test_xtb_h2_dic_opt():
     if shutil.which('xtb') is None or not shutil.which('xtb').endswith('xtb'):
         return
 
-    optimiser = DIC_SD_Optimiser(step_size=0.8,
+    # In DICs we can use a much larger step size
+    optimiser = DIC_SD_Optimiser(step_size=2.5,
                                  maxiter=10,
                                  gtol=GradientNorm(0.01),
                                  etol=PotentialEnergy(0.0001),
