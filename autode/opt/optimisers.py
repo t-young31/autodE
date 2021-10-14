@@ -17,15 +17,22 @@ class Optimiser(ABC):
                  etol:    PotentialEnergy,
                  **kwargs):
         """
-        Geometry optimiser. Signature follows that in scipy.minimize. Must
-        meet both energy and gradient criteria to converge.
+        Geometry optimiser. Signature follows that in scipy.minimize so
+        species and method are keyword arguments. Converged when both energy
+        and gradient criteria are met.
 
+        ----------------------------------------------------------------------
         Arguments:
             maxiter (int): Maximum number of iterations to perform
 
             gtol (autode.values.GradientNorm): Tolerance on RMS(|∇E|)
 
             etol (autode.values.PotentialEnergy): Tolerance on |E_i+1 - E_i|
+
+        Keyword Arguments:
+            species (autode.species.Species):
+
+            method (autode.wrappers.base.Method):
         """
         self.iteration = 0
         self.maxiter = maxiter
@@ -103,8 +110,8 @@ class Optimiser(ABC):
         return None
 
     def run(self,
-            species: 'autode.species.Species',
-            method:  'autode.wrappers.base.Method',
+            species: Optional['autode.species.Species'] = None,
+            method:  Optional['autode.wrappers.base.Method'] = None,
             n_cores: Optional[int] = None
             ) -> None:
         """
