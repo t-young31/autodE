@@ -74,7 +74,7 @@ class DIC(InternalCoordinates):
         s = cls(input_array=np.matmul(U.T, primitives.q))
         s.B = np.matmul(U.T, primitives.B)
         s.B_T_inv = np.linalg.pinv(s.B)
-        s._x = np.array(x, copy=True)
+        s._x = x.copy()
         s.primitive_type = primitive_type
 
         # Set the internal gradient
@@ -146,7 +146,7 @@ class DIC(InternalCoordinates):
         s_new = self._new_s_from_kwargs(kwargs)
 
         # Initialise
-        s_k, x_k = np.array(self, copy=True), np.array(self._x, copy=True)
+        s_k, x_k = np.array(self, copy=True), self._x.copy()
         U = self.U(primitives=self.primitive_type(x_k))
 
         iteration = 0
