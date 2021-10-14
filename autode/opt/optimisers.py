@@ -137,20 +137,23 @@ class Optimiser(ABC):
                              f'{self._method}')
 
         self._initialise_coords()
-        logger.info(f'Optimising {self._species.name}')
+        logger.info(f'Optimising {self._species.name}. '
+                    f'Maximum iterations = {self.maxiter}')
+        logger.info('Iteration\t|∆E| / \\kcal mol-1 \t||∇E|| / Ha Å-1')
 
         while not self.converged:
 
-            self._update_gradient()   # Updates self._coords.g
+            self._update_gradient_and_energy()   # Updates self._coords.g
             self._step()              # Updates self._species.coordinates
 
+            self._log_convergence()
             self.iteration += 1
             self._e_prev = self._species.energy
 
-            if self.iteration == self.maxiter:
+            if self.iteration >= self.maxiter:
                 logger.warning(f'Reached the maximum number of iterations '
                                f'*{self.maxiter}*. Did not converge')
-                return
+                break
 
         logger.info(f'Converged: {self.converged}, in {self.iteration} cycles')
         return None
@@ -164,39 +167,59 @@ class Optimiser(ABC):
         Returns:
             (bool): Converged?
         """
+        return self.abs_delta_e < self.etol and self.gradient_norm < self.gtol
+
+    @property
+    def abs_delta_e(self) -> PotentialEnergy:
+        """
+        |∆E| = |E_i - E_{i-1}|   for a step i
+
+        Returns:
+            (autode.values.PotentialEnergy): Energy difference. Infinity if
+                                  an energy difference cannot be calculated
+        """
+
         if not hasattr(self._species, 'energy'):
             logger.error('Species did not have an energy attribute. Cannot '
                          'determine convergence. Assuming false')
-            return False
+            return PotentialEnergy(np.inf)
 
         if self._species.energy is None:
-            return False
+            return PotentialEnergy(np.inf)
 
-        # Check energy tolerance |E - E_prev| < etol
-        delta_e = self._species.energy - self._e_prev
-        if abs(delta_e) > self.etol:
-            logger.info(f'|∆E| = {delta_e.to("kcal"):.4f} kcal mol-1')
-            return False
+        # NOTE: no abs() call to preserve PotentialEnergy type
+        if self._species.energy > self._e_prev:
+            return self._species.energy - self._e_prev
+        else:
+            return self._e_prev - self._species.energy
 
-        if not hasattr(self._coords, 'g'):
-            logger.error('Optimiser coordinates did not have a gradient, thus '
-                         'not converged')
-            return False
+    @property
+    def gradient_norm(self) -> GradientNorm:
+        """
+        Calculate ||∇E|| based on the current Cartesian gradient.
+
+        Returns:
+            (autode.values.GradientNorm): Gradient norm. Infinity if the
+                                          gradient is not defined
+        """
+        if self._coords is None:
+            logger.warning('Had no coordinates - cannot determine ||∇E||')
+            return GradientNorm(np.inf)
 
         if self._coords.to('cart').g is None:
-            logger.warning(f'Cartesian gradient for {self._species} was not '
-                           f'defined, thus ildetermined convergence')
-            return False
+            return GradientNorm(np.inf)
 
-        # Check gradient tolerance: ||∇E|| < gtol
-        norm_g = np.linalg.norm(self._coords.to('cart').g)
-        if norm_g > self.gtol:
-            logger.info(f'||∇E|| = {norm_g:.5f} Ha Å-1')
-            return False
+        return GradientNorm(np.linalg.norm(self._coords.to('cart').g))
 
-        return True
+    def _log_convergence(self) -> None:
+        """Log the convergence of the energy """
+        logger.info(f'{self.iteration}\t'
+                    f'{self.abs_delta_e.to("kcal mol-1"):.3f}\t'
+                    f'{self.gradient_norm:.5f}')
 
-    def _update_gradient(self) -> None:
+        return None
+
+    def _update_gradient_and_energy(self) -> None:
         """
         Update the gradient of the energy with respect to the coordinates
 
@@ -205,7 +228,7 @@ class Optimiser(ABC):
         """
         # Calculations need to be performed in cartesian coordinates
         self._coords = self._coords.to('cart')
-        self._species.coordinates = self._coords
+        self._species.coordinates = np.array(self._coords, copy=True)
 
         grad = Calculation(name=f'{self._species.name}_opt_{self.iteration}',
                            molecule=self._species,
@@ -235,7 +258,7 @@ class Optimiser(ABC):
         """Initialise self._coords from self._species"""
 
 
-class CartesianSteepestDecent(Optimiser):
+class SteepestDecent(Optimiser, ABC):
 
     def __init__(self, maxiter, gtol, etol, step_size=0.2, **kwargs):
         """
@@ -248,12 +271,9 @@ class CartesianSteepestDecent(Optimiser):
 
         self.step_size = step_size
 
+    @abstractmethod
     def _initialise_coords(self) -> None:
-        """
-        Initialise a set of cartesian coordinates. As a species' coordinates
-        are already Cartesian there is nothing special to do
-        """
-        self._coords = CartesianCoordinates(self._species.coordinates)
+        """Initialise the coordinates"""
 
     def _step(self) -> None:
         """
@@ -266,3 +286,20 @@ class CartesianSteepestDecent(Optimiser):
         where d is the step size.
         """
         self._coords -= self.step_size * self._coords.g
+
+
+class CartesianSDOptimiser(SteepestDecent):
+
+    def _initialise_coords(self) -> None:
+        """
+        Initialise a set of cartesian coordinates. As a species' coordinates
+        are already Cartesian there is nothing special to do
+        """
+        self._coords = CartesianCoordinates(self._species.coordinates)
+
+
+class DIC_SD_Optimiser(SteepestDecent):
+
+    def _initialise_coords(self) -> None:
+        """Initialise the delocalised internal coordinates"""
+        self._coords = CartesianCoordinates(self._species.coordinates).to('dic')

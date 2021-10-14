@@ -7,8 +7,9 @@ from autode.values import GradientNorm, PotentialEnergy
 from autode.opt.internals import InverseDistances
 from autode.opt.primitives import InverseDistance
 from autode.opt.cartesian import CartesianCoordinates
-from autode.opt.optimisers import CartesianSteepestDecent
 from autode.utils import work_in_tmp_dir
+from autode.opt.optimisers import (CartesianSDOptimiser,
+                                   DIC_SD_Optimiser)
 
 
 def methane_mol():
@@ -17,6 +18,10 @@ def methane_mol():
                            Atom('H', -0.24562, -0.89375,  0.74456),
                            Atom('H', -0.24562, -0.51754, -0.96176),
                            Atom('H', -0.24562,  0.77207,  0.21720)])
+
+
+def h2():
+    return Molecule(name='h2', atoms=[Atom('H'), Atom('H', x=1.5)])
 
 
 def test_primitives():
@@ -43,13 +48,28 @@ def test_primitives():
                       0)
 
 
+def test_cartesian_coordinates():
+    arr = np.array([[0.0, 0.0, 0.0],
+                    [2.0, 0.0, 0.0]])
+
+    x = CartesianCoordinates(arr)  # defaults to Å
+    assert 'cart' in repr(x).lower()
+    assert x.ndim == 1
+
+    # Can convert to other distance units
+    assert 0.19 < CartesianCoordinates(arr).to('nm')[3] < 0.21
+
+    # but not an unssported unit
+    with pytest.raises(ValueError):
+        _ = CartesianCoordinates(arr).to('X')
+
+
 def test_cart_to_dic():
 
     arr = np.array([[0.0, 0.0, 0.0],
                     [2.0, 0.0, 0.0]])
 
     x = CartesianCoordinates(arr)
-    assert x.ndim == 1
 
     # Should only have 1 internal coordinate
     pic = InverseDistances(x)
@@ -245,9 +265,9 @@ def test_hess_transform_linear():
 
 
 def sample_cartesian_optimiser():
-    return CartesianSteepestDecent(maxiter=1,
-                                   gtol=GradientNorm(0.1),
-                                   etol=PotentialEnergy(0.1))
+    return CartesianSDOptimiser(maxiter=1,
+                                gtol=GradientNorm(0.1),
+                                etol=PotentialEnergy(0.1))
 
 
 def test_optimiser_construct():
@@ -262,31 +282,72 @@ def test_optimiser_construct():
 
     # Optimiser needs valid arguments
     with pytest.raises(ValueError):
-        CartesianSteepestDecent(maxiter=0,
-                                gtol=GradientNorm(0.1),
-                                etol=PotentialEnergy(0.1))
+        _ = CartesianSDOptimiser(maxiter=0,
+                                 gtol=GradientNorm(0.1),
+                                 etol=PotentialEnergy(0.1))
 
     with pytest.raises(ValueError):
-        CartesianSteepestDecent(maxiter=0,
-                                gtol=GradientNorm(-0.1),
-                                etol=PotentialEnergy(0.1))
+        _ = CartesianSDOptimiser(maxiter=0,
+                                 gtol=GradientNorm(-0.1),
+                                 etol=PotentialEnergy(0.1))
 
     with pytest.raises(ValueError):
-        CartesianSteepestDecent(maxiter=0,
-                                gtol=GradientNorm(0.1),
-                                etol=PotentialEnergy(-0.1))
+        _ = CartesianSDOptimiser(maxiter=0,
+                                 gtol=GradientNorm(0.1),
+                                 etol=PotentialEnergy(-0.1))
 
 
 @work_in_tmp_dir()
 def test_xtb_h2_cart_opt():
 
-    mol = Molecule(name='h2', atoms=[Atom('H'), Atom('H', x=1.5)])
-
     # Don't run the calculation without a working XTB install
     if shutil.which('xtb') is None or not shutil.which('xtb').endswith('xtb'):
         return
 
-    CartesianSteepestDecent.optimise(mol, method=XTB(), maxiter=50)
+    mol = h2()
+    CartesianSDOptimiser.optimise(mol, method=XTB(), maxiter=50)
 
     # Optimised H-H distance is ~0.7 Å
     assert np.isclose(mol.distance(0, 1), 0.777, atol=0.1)
+
+
+@work_in_tmp_dir()
+def test_xtb_h2_cart_opt():
+
+    if shutil.which('xtb') is None or not shutil.which('xtb').endswith('xtb'):
+        return
+
+    optimiser = CartesianSDOptimiser(maxiter=2,
+                                     gtol=GradientNorm(0.1),
+                                     etol=PotentialEnergy(0.1),
+                                     method=XTB(),
+                                     species=None)
+    assert not optimiser.converged
+    optimiser._species = h2()
+
+    assert not optimiser.converged
+
+    # Should not converge in only two steps
+    optimiser.run()
+    assert not optimiser.converged
+
+
+@work_in_tmp_dir()
+def test_xtb_h2_dic_opt():
+
+    if shutil.which('xtb') is None or not shutil.which('xtb').endswith('xtb'):
+        return
+
+    optimiser = DIC_SD_Optimiser(step_size=0.8,
+                                 maxiter=10,
+                                 gtol=GradientNorm(0.01),
+                                 etol=PotentialEnergy(0.0001),
+                                 method=XTB())
+
+    mol = h2()
+    # Should optimise fast, in only a few steps
+    optimiser.run(species=mol)
+
+    assert optimiser.converged
+    assert optimiser.iteration < 10
+    assert np.isclose(mol.distance(0, 1), 0.77, atol=0.1)
