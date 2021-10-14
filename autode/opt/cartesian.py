@@ -1,5 +1,6 @@
 import numpy as np
 from autode.log import logger
+from autode.values import ValueArray
 from autode.opt.coordinates import OptCoordinates
 from autode.opt.dic import DIC
 
@@ -39,16 +40,16 @@ class CartesianCoordinates(OptCoordinates):
         """
         logger.info(f'Transforming Cartesian coordinates to {value}')
 
-        if value in ('cart', 'cartesian'):
+        if value.lower() in ('cart', 'cartesian'):
             return self
 
-        elif value in ('dic', 'delocalised internal coordinates'):
+        elif value.lower() in ('dic', 'delocalised internal coordinates'):
             return DIC.from_cartesian(self)
 
-        # ----------- Implement other internals here ------------
+        # ---------- Implement other internal transformations here -----------
 
         elif any(value in unit.aliases for unit in self.implemented_units):
-            return CartesianCoordinates(super().to(units=value).flatten(),
+            return CartesianCoordinates(ValueArray.to(self, units=value),
                                         units=value)
         else:
             raise ValueError(f'Cannot convert Cartesian coordinates to {value}')
