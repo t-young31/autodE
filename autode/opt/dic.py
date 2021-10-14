@@ -174,3 +174,12 @@ class DIC(InternalCoordinates):
         self[:] = s_k
         self._x = x_k
         return None
+
+    def __iadd__(self, other):
+        """Inplace addition of another set of coordinates"""
+        self.update(delta=other)
+        return self
+
+    def __isub__(self, other):
+        """Inplace subtraction of another set of coordinates"""
+        return self.__iadd__(-other)

@@ -303,3 +303,9 @@ class DIC_SD_Optimiser(SteepestDecent):
     def _initialise_coords(self) -> None:
         """Initialise the delocalised internal coordinates"""
         self._coords = CartesianCoordinates(self._species.coordinates).to('dic')
+
+    def _step(self) -> None:
+        """Take a step in DICs"""
+
+        self._coords = self._coords.to('dic')
+        self._coords -= self.step_size * self._coords.g
