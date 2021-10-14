@@ -156,6 +156,7 @@ class Optimiser(ABC):
                 break
 
         logger.info(f'Converged: {self.converged}, in {self.iteration} cycles')
+        self.iteration = 0
         return None
 
     @property
@@ -262,7 +263,7 @@ class SteepestDecent(Optimiser, ABC):
 
     def __init__(self, maxiter, gtol, etol, step_size=0.2, **kwargs):
         """
-        Steepest decent optimiser in Cartesian coordinates
+        Steepest decent optimiser
 
         Arguments:
             step_size (float): Size of the step to take. Units of distance
