@@ -61,9 +61,11 @@ class PIC(list, ABC):
 
         for i, primitive in enumerate(self):
             for j in range(n_atoms):
-                for k, component in enumerate(['x', 'y', 'z']):
 
-                    B[i, 3 * j + k] = primitive.derivative(j, component, x=_x)
+                B[i, 3 * j + 0] = primitive.derivative(j, 'x', x=_x)
+                B[i, 3 * j + 1] = primitive.derivative(j, 'y', x=_x)
+                B[i, 3 * j + 2] = primitive.derivative(j, 'z', x=_x)
+
         return B
 
 
