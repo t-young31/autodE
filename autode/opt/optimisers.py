@@ -272,9 +272,15 @@ class SteepestDecent(Optimiser, ABC):
 
         self.step_size = step_size
 
-    @abstractmethod
+
+class CartesianSDOptimiser(SteepestDecent):
+
     def _initialise_coords(self) -> None:
-        """Initialise the coordinates"""
+        """
+        Initialise a set of cartesian coordinates. As a species' coordinates
+        are already Cartesian there is nothing special to do
+        """
+        self._coords = CartesianCoordinates(self._species.coordinates)
 
     def _step(self) -> None:
         """
@@ -287,16 +293,6 @@ class SteepestDecent(Optimiser, ABC):
         where d is the step size.
         """
         self._coords -= self.step_size * self._coords.g
-
-
-class CartesianSDOptimiser(SteepestDecent):
-
-    def _initialise_coords(self) -> None:
-        """
-        Initialise a set of cartesian coordinates. As a species' coordinates
-        are already Cartesian there is nothing special to do
-        """
-        self._coords = CartesianCoordinates(self._species.coordinates)
 
 
 class DIC_SD_Optimiser(SteepestDecent):
