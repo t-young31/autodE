@@ -52,5 +52,10 @@ class OptCoordinates(ValueArray, ABC):
         self._h = value
 
     @abstractmethod
+    @property
+    def type_str(self) -> str:
+        """Type string of these coordinates. Should be compatible with to()"""
+
+    @abstractmethod
     def to(self, *args, **kwargs):
         """Transformation between these coordinates and another type"""

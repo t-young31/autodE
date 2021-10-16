@@ -31,6 +31,10 @@ class CartesianCoordinates(OptCoordinates):
         """Is a string a valid unit for these coordinates e.g. nm"""
         return any(string in unit.aliases for unit in self.implemented_units)
 
+    @property
+    def type_str(self) -> str:
+        return 'cart'
+
     def to(self, value: str) -> OptCoordinates:
         """
         Transform between cartesian and internal coordinates e.g. delocalised
