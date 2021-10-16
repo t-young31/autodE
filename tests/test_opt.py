@@ -274,11 +274,11 @@ def test_optimiser_construct():
 
     # Optimiser needs a Species
     with pytest.raises(ValueError):
-        sample_cartesian_optimiser().run(None, XTB())
+        sample_cartesian_optimiser().run(species=None, method=XTB())
 
     # also a method
     with pytest.raises(ValueError):
-        sample_cartesian_optimiser().run(methane_mol(), None)
+        sample_cartesian_optimiser().run(species=methane_mol(), method=None)
 
     # Optimiser needs valid arguments
     with pytest.raises(ValueError):
@@ -320,15 +320,14 @@ def test_xtb_h2_cart_opt():
     optimiser = CartesianSDOptimiser(maxiter=2,
                                      gtol=GradientNorm(0.1),
                                      etol=PotentialEnergy(0.1),
-                                     method=XTB(),
-                                     species=None)
+                                     )
     assert not optimiser.converged
     optimiser._species = h2()
 
     assert not optimiser.converged
 
     # Should not converge in only two steps
-    optimiser.run()
+    optimiser.run(method=XTB(), species=h2())
     assert not optimiser.converged
 
 
@@ -342,12 +341,11 @@ def test_xtb_h2_dic_opt():
     optimiser = DIC_SD_Optimiser(step_size=2.5,
                                  maxiter=10,
                                  gtol=GradientNorm(0.01),
-                                 etol=PotentialEnergy(0.0001),
-                                 method=XTB())
+                                 etol=PotentialEnergy(0.0001))
 
     mol = h2()
     # Should optimise fast, in only a few steps
-    optimiser.run(species=mol)
+    optimiser.run(species=mol, method=XTB())
 
     assert optimiser.converged
     assert optimiser.iteration < 10

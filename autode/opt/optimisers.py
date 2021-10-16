@@ -14,8 +14,7 @@ class Optimiser(ABC):
     def __init__(self,
                  maxiter: int,
                  gtol:    GradientNorm,
-                 etol:    PotentialEnergy,
-                 **kwargs):
+                 etol:    PotentialEnergy):
         """
         Geometry optimiser. Signature follows that in scipy.minimize so
         species and method are keyword arguments. Converged when both energy
@@ -28,49 +27,79 @@ class Optimiser(ABC):
             gtol (autode.values.GradientNorm): Tolerance on RMS(|∇E|)
 
             etol (autode.values.PotentialEnergy): Tolerance on |E_i+1 - E_i|
-
-        Keyword Arguments:
-            species (autode.species.Species):
-
-            method (autode.wrappers.base.Method):
         """
         self.iteration = 0
+        self._maxiter, self._gtol, self._etol = None, None, None
+
         self.maxiter = maxiter
-
-        self.gtol = GradientNorm(gtol)                     # Gradient tolerance
-        self.etol = PotentialEnergy(etol)                  # Energy tolerance
-
-        self._check_init_params()
+        self.gtol = gtol
+        self.etol = etol
 
         self._ncores:  int = Config.n_cores
 
         self._coords:  Optional['autode.opt.coordinates.OptCoordinates'] = None
-        self._species: Optional['autode.species.Species'] = kwargs.get('species', None)
-        self._method:  Optional['autode.wrappers.base.Method'] = kwargs.get('method', None)
+        self._species: Optional['autode.species.Species'] = None
+        self._method:  Optional['autode.wrappers.base.Method'] = None
 
         # Previous energy, used to check convergence of the energy
         self._e_prev = PotentialEnergy(np.inf, units='Ha')
 
-    def _check_init_params(self) -> None:
+    @property
+    def maxiter(self) -> int:
         """
-        Check initial values of the properties/attributes
+        Maximum number of iterations (gradient evaluations) to perform
 
-        Raises:
-            (ValueError):
+        Returns:
+            (int): Maxiter
         """
-        if self.maxiter <= 0:
+        return self._maxiter
+
+    @maxiter.setter
+    def maxiter(self, value: int):
+        """Set the Maximum number of iterations to perform"""
+        if int(value) <= 0:
             raise ValueError('An optimiser must be able to run at least one '
-                             f'step, but maxiter = {self.maxiter}')
+                             f'step, but tried to set maxiter = {value}')
 
-        if self.gtol <= 0:
-            raise ValueError('Tolerance on the gradient (RMS(|∇E|)) must be '
-                             f'positive. Had: gtol={self.gtol}')
+        self._maxiter = int(value)
 
-        if self.etol <= 0:
+    @property
+    def gtol(self) -> GradientNorm:
+        """
+        Gradient tolerance on |∇E| i.e. the root mean square of each component
+
+        Returns:
+            (autode.values.GradientNorm):
+        """
+        return self._gtol
+
+    @gtol.setter
+    def gtol(self, value: Union[int, float, GradientNorm]):
+        """Set the gradient tolerance"""
+        if float(value) <= 0:
+            ValueError('Tolerance on the gradient (RMS(|∇E|)) must be '
+                       f'positive. Had: gtol={value}')
+
+        self._gtol = GradientNorm(value)
+
+    @property
+    def etol(self) -> PotentialEnergy:
+        """
+        Energy tolerance between two consecutive steps of the optimisation
+
+        Returns:
+            (autode.values.PotentialEnergy): Energy tolerance
+        """
+        return self._etol
+
+    @etol.setter
+    def etol(self, value: Union[int, float, PotentialEnergy]):
+        """Set the energy tolerance"""
+        if float(value) <= 0:
             raise ValueError('Tolerance on the energy change is absolute so '
-                             f'must be positive. Had etol={self.etol}')
+                             f'must be positive. Had etol = {value}')
 
-        return None
+        self._etol = PotentialEnergy(value)
 
     @classmethod
     def optimise(cls,
@@ -110,35 +139,35 @@ class Optimiser(ABC):
         return None
 
     def run(self,
-            species: Optional['autode.species.Species'] = None,
-            method:  Optional['autode.wrappers.base.Method'] = None,
+            species: 'autode.species.Species',
+            method:  'autode.wrappers.base.Method',
             n_cores: Optional[int] = None
             ) -> None:
         """
         Run the optimiser. Updates species.atoms and species.energy
 
         ----------------------------------------------------------------------
-        Keyword Arguments:
+        Arguments:
             species (autode.species.Species): Species to optimise, if None
                     then use the species this optimiser was initalised with
 
             method (autode.methods.Method): Method to use. Calculations will
                    use method.keywords.grad for gradient calculations
+
+        Keyword Arguments:
+            n_cores (int | None): Number of cores to use for the gradient
+                        evaluations. If None then use autode.Config.n_cores
         """
         self._method = method if method is not None else self._method
-        self._ncores = n_cores if n_cores is not None else self._ncores
-        logger.info(f'Using {self._method} to optimise with {self._ncores} cores')
-
+        self._ncores = n_cores if n_cores is not None else Config.n_cores
         self._species = species if species is not None else self._species
 
-        if self._species is None or self._method is None:
-            raise ValueError('Must have a species and a method to run an '
-                             f'optimisation. Had: {self._species} and '
-                             f'{self._method}')
-
+        self._check_species_and_method()
         self._initialise_coords()
-        logger.info(f'Optimising {self._species.name}. '
-                    f'Maximum iterations = {self.maxiter}')
+
+        logger.info(f'Using {self._method} to optimise {self._species.name} '
+                    f'with {self._ncores} cores using {self.maxiter} max '
+                    f'iterations')
         logger.info('Iteration\t|∆E| / \\kcal mol-1 \t||∇E|| / Ha Å-1')
 
         while not self.converged:
@@ -168,12 +197,15 @@ class Optimiser(ABC):
         Returns:
             (bool): Converged?
         """
-        return self.abs_delta_e < self.etol and self.gradient_norm < self.gtol
+        return self.abs_delta_e < self.etol and self.g_norm < self.gtol
 
     @property
     def abs_delta_e(self) -> PotentialEnergy:
         """
-        |∆E| = |E_i - E_{i-1}|   for a step i
+        Calculate the absolute energy difference
+
+        .. math::
+            |∆E| = |E_i - E_{i-1}|   for a step i
 
         Returns:
             (autode.values.PotentialEnergy): Energy difference. Infinity if
@@ -181,8 +213,8 @@ class Optimiser(ABC):
         """
 
         if not hasattr(self._species, 'energy'):
-            logger.error('Species did not have an energy attribute. Cannot '
-                         'determine convergence. Assuming false')
+            logger.error('self._species did not have an energy attribute. '
+                         'Returning |∆E| = ∞')
             return PotentialEnergy(np.inf)
 
         if self._species.energy is None:
@@ -195,7 +227,7 @@ class Optimiser(ABC):
             return self._e_prev - self._species.energy
 
     @property
-    def gradient_norm(self) -> GradientNorm:
+    def g_norm(self) -> GradientNorm:
         """
         Calculate ||∇E|| based on the current Cartesian gradient.
 
@@ -216,7 +248,7 @@ class Optimiser(ABC):
         """Log the convergence of the energy """
         logger.info(f'{self.iteration}\t'
                     f'{self.abs_delta_e.to("kcal mol-1"):.3f}\t'
-                    f'{self.gradient_norm:.5f}')
+                    f'{self.g_norm:.5f}')
 
         return None
 
@@ -246,6 +278,18 @@ class Optimiser(ABC):
         self._coords.g = self._species.gradient.flatten()
 
         return None
+
+    def _check_species_and_method(self) -> None:
+        """Check the internal species and method have the correct attributes"""
+
+        if self._species is None or self._method is None:
+            raise ValueError('Must have a species and a method to run an '
+                             f'optimisation. Had: {self._species} and '
+                             f'{self._method}')
+
+        if not all(hasattr(self._species, attr) for attr in ('energy', 'name')):
+            raise ValueError('Internal species required energy and name '
+                             f'attributes but had {self._species}')
 
     @abstractmethod
     def _step(self) -> None:
