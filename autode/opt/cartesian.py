@@ -14,7 +14,7 @@ class CartesianCoordinates(OptCoordinates):
     def __new__(cls, input_array, units='Å') -> 'CartesianCoordinates':
         """New instance of these coordinates"""
 
-        return super().__new__(cls, input_array.flatten(), units=units)
+        return super().__new__(cls, np.array(input_array).flatten(), units=units)
 
     def __array_finalize__(self, obj) -> None:
         """See https://numpy.org/doc/stable/user/basics.subclassing.html"""
@@ -27,16 +27,24 @@ class CartesianCoordinates(OptCoordinates):
 
         return super().__array_finalize__(obj)
 
+    def _str_is_valid_unit(self, string) -> bool:
+        """Is a string a valid unit for these coordinates e.g. nm"""
+        return any(string in unit.aliases for unit in self.implemented_units)
+
     def to(self, value: str) -> OptCoordinates:
         """
-        Allow for the transformation between cartesian and internal coordinates
-        e.g. delocalised internal coordinates
+        Transform between cartesian and internal coordinates e.g. delocalised
+        internal coordinates or other units
 
+        -----------------------------------------------------------------------
         Arguments:
-            value (str):
+            value (str): Intended conversion
 
-        Retuns:
-            (autode.opt.coordinates._OptCoordinates):
+        Returns:
+            (autode.opt.coordinates.OptCoordinates):
+
+        Raises:
+            (ValueError): If the conversion cannot be performed
         """
         logger.info(f'Transforming Cartesian coordinates to {value}')
 
@@ -48,7 +56,7 @@ class CartesianCoordinates(OptCoordinates):
 
         # ---------- Implement other internal transformations here -----------
 
-        elif any(value in unit.aliases for unit in self.implemented_units):
+        elif self._str_is_valid_unit(value):
             return CartesianCoordinates(ValueArray.to(self, units=value),
                                         units=value)
         else:
