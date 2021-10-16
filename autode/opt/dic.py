@@ -26,6 +26,10 @@ class DIC(InternalCoordinates):
     def __repr__(self):
         return f'DIC(n={len(self)})'
 
+    @property
+    def type_str(self) -> str:
+        return 'dic'
+
     @staticmethod
     def U(primitives: PIC) -> np.ndarray:
         """
