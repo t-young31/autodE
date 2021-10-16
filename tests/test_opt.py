@@ -287,12 +287,17 @@ def test_optimiser_construct():
                                  etol=PotentialEnergy(0.1))
 
     with pytest.raises(ValueError):
-        _ = CartesianSDOptimiser(maxiter=0,
+        _ = CartesianSDOptimiser(maxiter=1,
                                  gtol=GradientNorm(-0.1),
                                  etol=PotentialEnergy(0.1))
 
     with pytest.raises(ValueError):
-        _ = CartesianSDOptimiser(maxiter=0,
+        _ = CartesianSDOptimiser(maxiter=1,
+                                 gtol=GradientNorm(-0.1),
+                                 etol=PotentialEnergy(0.1))
+
+    with pytest.raises(ValueError):
+        _ = CartesianSDOptimiser(maxiter=1,
                                  gtol=GradientNorm(0.1),
                                  etol=PotentialEnergy(-0.1))
 

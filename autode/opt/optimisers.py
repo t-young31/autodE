@@ -76,9 +76,10 @@ class Optimiser(ABC):
     @gtol.setter
     def gtol(self, value: Union[int, float, GradientNorm]):
         """Set the gradient tolerance"""
+
         if float(value) <= 0:
-            ValueError('Tolerance on the gradient (RMS(|∇E|)) must be '
-                       f'positive. Had: gtol={value}')
+            raise ValueError('Tolerance on the gradient (||∇E||) must be '
+                             f'positive. Had: gtol={value}')
 
         self._gtol = GradientNorm(value)
 
