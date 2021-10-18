@@ -176,14 +176,13 @@ class DIC(InternalCoordinates):
                     f'{time() - start_time:.4f} s')
 
         self[:] = s_k
+        self.clear_gradient_and_hessian()
+
         self._x = x_k
+        self._x.clear_gradient_and_hessian()
         return None
 
-    def __iadd__(self, other):
+    def _iadd(self, other: np.ndarray):
         """Inplace addition of another set of coordinates"""
         self.update(delta=other)
         return self
-
-    def __isub__(self, other):
-        """Inplace subtraction of another set of coordinates"""
-        return self.__iadd__(-other)

@@ -148,8 +148,8 @@ class Optimiser(ABC):
     def _initialise_coords(self) -> None:
         """Initialise self._coords from self._species"""
 
-    @abstractmethod
     @property
+    @abstractmethod
     def converged(self) -> bool:
         """Has this optimisation converged"""
 

@@ -35,6 +35,10 @@ class CartesianCoordinates(OptCoordinates):
     def type_str(self) -> str:
         return 'cart'
 
+    def _iadd(self, value: np.ndarray) -> 'OptCoordinates':
+        np.ndarray.__iadd__(self, value)
+        return self
+
     def to(self, value: str) -> OptCoordinates:
         """
         Transform between cartesian and internal coordinates e.g. delocalised
