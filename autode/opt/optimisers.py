@@ -82,9 +82,7 @@ class Optimiser(ABC):
         self._ncores = n_cores if n_cores is not None else Config.n_cores
 
         self._initialise_species_and_method(species, method)
-
-        if self._coords is None:
-            self._initialise_coords()
+        self._initialise_run()
 
         logger.info(f'Using {self._method} to optimise {self._species.name} '
                     f'with {self._ncores} cores using {self._maxiter} max '
@@ -173,8 +171,16 @@ class Optimiser(ABC):
         """
 
     @abstractmethod
-    def _initialise_coords(self) -> None:
-        """Initialise self._coords from self._species"""
+    def _initialise_run(self) -> None:
+        """
+        Initialise all attributes required to call self._step()
+
+        For example:
+
+            self._coords     (from self._species)
+            self._coords.g
+            self._coords.h
+        """
 
     @property
     @abstractmethod
