@@ -37,6 +37,7 @@ class CartesianSDOptimiser(SteepestDecent):
         are already Cartesian there is nothing special to do
         """
         self._coords = CartesianCoordinates(self._species.coordinates)
+        self._update_gradient_and_energy()
 
 
 class DIC_SD_Optimiser(SteepestDecent):
@@ -44,3 +45,4 @@ class DIC_SD_Optimiser(SteepestDecent):
     def _initialise_coords(self) -> None:
         """Initialise the delocalised internal coordinates"""
         self._coords = CartesianCoordinates(self._species.coordinates).to('dic')
+        self._update_gradient_and_energy()
