@@ -51,11 +51,6 @@ class OptCoordinates(ValueArray, ABC):
         """Set the second derivatives of the energy"""
         self._h = value
 
-    @property
-    @abstractmethod
-    def type_str(self) -> str:
-        """Type string of these coordinates. Should be compatible with to()"""
-
     @abstractmethod
     def to(self, *args, **kwargs):
         """Transformation between these coordinates and another type"""

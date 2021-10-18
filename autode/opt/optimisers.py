@@ -143,7 +143,7 @@ class Optimiser(ABC):
         Raises:
             (autode.exceptions.CalculationException):
         """
-        coord_type = self._coords.type_str
+        coord_type_str = type(self._coords).__name__
 
         # Calculations need to be performed in cartesian coordinates
         self._coords = self._coords.to('cart')
@@ -162,7 +162,7 @@ class Optimiser(ABC):
         grad.clean_up(force=True, everything=True)
 
         self._coords.g = self._species.gradient.flatten()
-        self._coords = self._coords.to(coord_type)
+        self._coords = self._coords.to(coord_type_str)
         return None
 
     @abstractmethod

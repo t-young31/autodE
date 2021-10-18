@@ -31,10 +31,6 @@ class CartesianCoordinates(OptCoordinates):
         """Is a string a valid unit for these coordinates e.g. nm"""
         return any(string in unit.aliases for unit in self.implemented_units)
 
-    @property
-    def type_str(self) -> str:
-        return 'cart'
-
     def _iadd(self, value: np.ndarray) -> 'OptCoordinates':
         np.ndarray.__iadd__(self, value)
         return self
@@ -56,7 +52,7 @@ class CartesianCoordinates(OptCoordinates):
         """
         logger.info(f'Transforming Cartesian coordinates to {value}')
 
-        if value.lower() in ('cart', 'cartesian'):
+        if value.lower() in ('cart', 'cartesian', 'cartesiancoordinates'):
             return self
 
         elif value.lower() in ('dic', 'delocalised internal coordinates'):
