@@ -78,12 +78,13 @@ class Optimiser(ABC):
 
         while not self.converged:
 
-            self._update_gradient_and_energy()   # Update self._coords.g
             self._step()                         # Update self._coords
 
             self._log_convergence()
             self.iteration += 1
+
             self._e_prev = self._species.energy
+            self._update_gradient_and_energy()   # Update self._coords.g
 
             if self.iteration >= self._maxiter:
                 logger.warning(f'Reached the maximum number of iterations '
