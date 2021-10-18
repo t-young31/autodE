@@ -130,9 +130,9 @@ class DIC(InternalCoordinates):
         """
         Set some new internal coordinates and update the Cartesian coordinates
 
-        ..math::
+        .. math::
 
-            x^(k+1) = x(k) + B^T^{-1}(k)[s_new - s(k)
+            x^(k+1) = x(k) + ({B^T})^{-1}(k)[s_{new} - s(k)]
 
         for an iteration k.
 

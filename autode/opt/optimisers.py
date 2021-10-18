@@ -5,22 +5,27 @@ from autode.log import logger
 from autode.config import Config
 from autode.calculation import Calculation
 from autode.values import GradientNorm, PotentialEnergy
-from autode.opt.cartesian import CartesianCoordinates
+from autode.opt.coordinates import OptCoordinates
 
 
 class Optimiser(ABC):
     """Abstract base class for an optimiser"""
 
     def __init__(self,
-                 maxiter: int):
+                 maxiter: int,
+                 coords:  Optional[OptCoordinates] = None):
         """
         Optimiser
 
         ----------------------------------------------------------------------
         Arguments:
             maxiter (int): Maximum number of iterations to perform
-        """
 
+        Keyword Arguments:
+            coords (autode.opt.coordinates.OptCoordinates | None): Coordinates
+                  to use in the optimisation e.g. CartesianCoordinates. If None
+                  then will initialise the coordinates from _species
+        """
         if int(maxiter) <= 0:
             raise ValueError('An optimiser must be able to run at least one '
                              f'step, but tried to set maxiter = {maxiter}')
@@ -30,7 +35,7 @@ class Optimiser(ABC):
 
         self._ncores:  int = Config.n_cores
 
-        self._coords:  Optional['autode.opt.coordinates.OptCoordinates'] = None
+        self._coords = coords
         self._species: Optional['autode.species.Species'] = None
         self._method:  Optional['autode.wrappers.base.Method'] = None
 
@@ -41,8 +46,18 @@ class Optimiser(ABC):
     def optimise(cls,
                  species: 'autode.species.Species',
                  method:  'autode.wrappers.base.Method',
+                 n_cores: Optional[int] = None,
+                 coords:  Optional[OptCoordinates] = None,
                  **kwargs):
-        """Optimise a species using a method e.g."""
+        """
+        Optimise a species using a method
+
+        .. code-block:: Python
+
+          >>> import autode as ade
+          >>> mol = ade.Molecule(smiles='C')
+          >>> Optimiser.optimise(mol, method=ade.methods.ORCA())
+        """
 
     def run(self,
             species: 'autode.species.Species',
@@ -67,7 +82,9 @@ class Optimiser(ABC):
         self._ncores = n_cores if n_cores is not None else Config.n_cores
 
         self._initialise_species_and_method(species, method)
-        self._initialise_coords()
+
+        if self._coords is None:
+            self._initialise_coords()
 
         logger.info(f'Using {self._method} to optimise {self._species.name} '
                     f'with {self._ncores} cores using {self._maxiter} max '
@@ -76,13 +93,13 @@ class Optimiser(ABC):
 
         while not self.converged:
 
-            self._step()                         # Update self._coords
+            self._step()                                  # Update self._coords
 
             self._log_convergence()
             self.iteration += 1
 
             self._e_prev = self._species.energy
-            self._update_gradient_and_energy()   # Update self._coords.g
+            self._update_gradient_and_energy()          # Update self._coords.g
 
             if self.iteration >= self._maxiter:
                 logger.warning(f'Reached the maximum number of iterations '
@@ -103,7 +120,6 @@ class Optimiser(ABC):
          Raises:
              (ValueError): For incorrect type or attributes
          """
-
         self._method = method if method is not None else self._method
         self._species = species if species is not None else self._species
 
@@ -178,7 +194,8 @@ class NDOptimiser(Optimiser):
     def __init__(self,
                  maxiter: int,
                  gtol:    GradientNorm,
-                 etol:    PotentialEnergy):
+                 etol:    PotentialEnergy,
+                 coords:  Optional[OptCoordinates] = None):
         """
         Geometry optimiser. Signature follows that in scipy.minimize so
         species and method are keyword arguments. Converged when both energy
@@ -191,8 +208,12 @@ class NDOptimiser(Optimiser):
             gtol (autode.values.GradientNorm): Tolerance on RMS(|∇E|)
 
             etol (autode.values.PotentialEnergy): Tolerance on |E_i+1 - E_i|
+
+        See Also:
+
+            :py:meth:`Optimiser <Optimiser.__init__>`
         """
-        super().__init__(maxiter=maxiter)
+        super().__init__(maxiter=maxiter, coords=coords)
 
         self._gtol, self._etol = None, None
         self.gtol, self.etol = gtol, etol
@@ -243,6 +264,7 @@ class NDOptimiser(Optimiser):
                  maxiter: int = 500,
                  gtol:    Union[float, GradientNorm] = GradientNorm(1E-3, units='Ha Å-1'),
                  etol:    Union[float, PotentialEnergy] = PotentialEnergy(1E-4, units='Ha'),
+                 coords:  Optional[OptCoordinates] = None,
                  n_cores: Optional[int] = None,
                  ) -> None:
         """
@@ -268,6 +290,8 @@ class NDOptimiser(Optimiser):
         """
 
         optimiser = cls(maxiter=maxiter, gtol=gtol, etol=etol)
+        optimiser._coords = coords
+
         optimiser.run(species, method, n_cores=n_cores)
 
         return None
@@ -281,10 +305,10 @@ class NDOptimiser(Optimiser):
         Returns:
             (bool): Converged?
         """
-        return self.abs_delta_e < self.etol and self.g_norm < self.gtol
+        return self._abs_delta_e < self.etol and self._g_norm < self.gtol
 
     @property
-    def abs_delta_e(self) -> PotentialEnergy:
+    def _abs_delta_e(self) -> PotentialEnergy:
         """
         Calculate the absolute energy difference
 
@@ -311,7 +335,7 @@ class NDOptimiser(Optimiser):
             return self._e_prev - self._species.energy
 
     @property
-    def g_norm(self) -> GradientNorm:
+    def _g_norm(self) -> GradientNorm:
         """
         Calculate ||∇E|| based on the current Cartesian gradient.
 
@@ -331,7 +355,7 @@ class NDOptimiser(Optimiser):
     def _log_convergence(self) -> None:
         """Log the convergence of the energy """
         logger.info(f'{self.iteration}\t'
-                    f'{self.abs_delta_e.to("kcal mol-1"):.3f}\t'
-                    f'{self.g_norm:.5f}')
+                    f'{self._abs_delta_e.to("kcal mol-1"):.3f}\t'
+                    f'{self._g_norm:.5f}')
 
         return None
