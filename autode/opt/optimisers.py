@@ -64,11 +64,9 @@ class Optimiser(ABC):
             n_cores (int | None): Number of cores to use for the gradient
                         evaluations. If None then use autode.Config.n_cores
         """
-        self._method = method if method is not None else self._method
         self._ncores = n_cores if n_cores is not None else Config.n_cores
-        self._species = species if species is not None else self._species
 
-        self._check_species_and_method()
+        self._initialise_species_and_method(species, method)
         self._initialise_coords()
 
         logger.info(f'Using {self._method} to optimise {self._species.name} '
@@ -95,8 +93,19 @@ class Optimiser(ABC):
         self.iteration = 0
         return None
 
-    def _check_species_and_method(self) -> None:
-        """Check the internal species and method have the correct attributes"""
+    def _initialise_species_and_method(self,
+                                       species: 'autode.species.Species',
+                                       method:  'autode.wrappers.base.Method'
+                                       ) -> None:
+        """Initialise the internal species and method. They must have the
+         correct attributes
+
+         Raises:
+             (ValueError): For incorrect type or attributes
+         """
+
+        self._method = method if method is not None else self._method
+        self._species = species if species is not None else self._species
 
         if self._species is None or self._method is None:
             raise ValueError('Must have a species and a method to run an '
@@ -106,6 +115,8 @@ class Optimiser(ABC):
         if not all(hasattr(self._species, attr) for attr in ('energy', 'name')):
             raise ValueError('Internal species required energy and name '
                              f'attributes but had {self._species}')
+
+        return None
 
     def _update_gradient_and_energy(self) -> None:
         """
