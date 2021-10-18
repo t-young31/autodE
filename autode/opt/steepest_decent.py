@@ -37,7 +37,7 @@ class SteepestDecent(NDOptimiser, ABC):
 class CartesianSDOptimiser(SteepestDecent):
     """Steepest decent optimisation in Cartesian coordinates"""
 
-    def _initialise_coords(self) -> None:
+    def _initialise_run(self) -> None:
         """
         Initialise a set of cartesian coordinates. As a species' coordinates
         are already Cartesian there is nothing special to do
@@ -49,7 +49,7 @@ class CartesianSDOptimiser(SteepestDecent):
 class DIC_SD_Optimiser(SteepestDecent):
     """Steepest decent optimisation in delocalised internal coordinates"""
 
-    def _initialise_coords(self) -> None:
+    def _initialise_run(self) -> None:
         """Initialise the delocalised internal coordinates"""
         self._coords = CartesianCoordinates(self._species.coordinates).to('dic')
         self._update_gradient_and_energy()
