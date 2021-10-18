@@ -9,8 +9,13 @@ class SteepestDecent(NDOptimiser, ABC):
         """
         Steepest decent optimiser
 
+        ----------------------------------------------------------------------
         Arguments:
             step_size (float): Size of the step to take. Units of distance
+
+        See Also:
+
+            :py:meth:`NDOptimiser <autode.opt.optimisers.NDOptimiser.__init__>`
         """
         super().__init__(maxiter=maxiter, gtol=gtol, etol=etol, **kwargs)
 
@@ -30,6 +35,7 @@ class SteepestDecent(NDOptimiser, ABC):
 
 
 class CartesianSDOptimiser(SteepestDecent):
+    """Steepest decent optimisation in Cartesian coordinates"""
 
     def _initialise_coords(self) -> None:
         """
@@ -41,6 +47,7 @@ class CartesianSDOptimiser(SteepestDecent):
 
 
 class DIC_SD_Optimiser(SteepestDecent):
+    """Steepest decent optimisation in delocalised internal coordinates"""
 
     def _initialise_coords(self) -> None:
         """Initialise the delocalised internal coordinates"""
