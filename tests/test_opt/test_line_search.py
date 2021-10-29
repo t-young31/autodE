@@ -7,19 +7,23 @@ from autode.opt.line_search import (LineSearchOptimiser,
                                     ArmijoLineSearch)
 
 
+def quadratic(x, y):
+    return x**2 + y**2, np.array([2*x, 2*y])
+
+
 class TestSDLineSearch(LineSearchOptimiser):
     """Line search for E = x^2 + y^2"""
 
     __test__ = False
 
-    def __init__(self, init_step_size=0.1):
+    def __init__(self,
+                 init_step_size=0.1,
+                 energy_grad_func=quadratic,
+                 ):
         super().__init__(maxiter=100)
 
+        self.energy_grad_func = energy_grad_func
         self.alpha = init_step_size
-
-    @classmethod
-    def optimise(cls, species, method, **kwargs):
-        raise NotImplementedError
 
     @property
     def converged(self) -> bool:
@@ -38,25 +42,27 @@ class TestSDLineSearch(LineSearchOptimiser):
     def _update_gradient_and_energy(self) -> None:
 
         x, y = self._coords
-        self._coords.g = np.array([2*x, 2*y])
-        self._species.energy = x**2 + y**2
+        self._species.energy, self._coords.g = self.energy_grad_func(x, y)
 
 
 class TestArmijoLineSearch(ArmijoLineSearch):
 
     __test__ = False
 
-    def __init__(self, init_step_size=1.0):
-        super().__init__(maxiter=10, alpha_init=init_step_size)
+    def __init__(self, init_step_size=1.0, energy_grad_func=quadratic):
+        super().__init__(maxiter=10,
+                         alpha_init=init_step_size)
+
+        self.energy_grad_func = energy_grad_func
 
     def _initialise_coordinates(self) -> None:
-        return TestSDLineSearch._initialise_coordinates(self)
+        self._coords = CartesianCoordinates(np.array([-0.8, 1.0]))
 
     def _update_gradient_and_energy(self) -> None:
         return TestSDLineSearch._update_gradient_and_energy(self)
 
     def _log_convergence(self) -> None:
-        print(self._e_prev, self._species.energy)
+        pass  # print(self._e_prev, self._species.energy)
 
 
 def test_simple_line_search():
@@ -93,3 +99,21 @@ def test_armijo_line_search_diff_step_sizes():
         optimiser.run(Molecule(name='blank'), method=Method())
 
         assert optimiser.converged
+
+
+def test_armijo_line_search_complex_func():
+
+    def energy_grad(x, y):
+        energy = 10*(y-x**2)**2 + (x-1)**2
+        gradient = np.array([2*(20*x**3 - 20*x*y + x -1),
+                             20*(y-x**2)])
+
+        return energy, gradient
+
+    optimiser = TestArmijoLineSearch(energy_grad_func=energy_grad,
+                                     init_step_size=0.1)
+    optimiser.run(Molecule(name='blank'), method=Method())
+
+    assert optimiser.converged
+    assert optimiser._species.energy < optimiser._init_e
+
