@@ -1,3 +1,13 @@
+"""
+Line search optimisers used to solve the 1D optimisation problem by
+taking steps
+
+                X_{i+1} = X_i + α p
+
+where α is a step size and p is a search direction. See e.g.
+https://www.numerical.rl.ac.uk/people/nimg/oumsc/lectures/uepart2.2.pdf
+"""
+
 import numpy as np
 from abc import ABC, abstractmethod
 from copy import deepcopy
