@@ -16,6 +16,7 @@ U : Transformation matrix q -> s
 """
 import numpy as np
 from time import time
+from typing import Type
 from autode.opt.internals import PIC, InverseDistances, InternalCoordinates
 from autode.log import logger
 
@@ -50,7 +51,7 @@ class DIC(InternalCoordinates):
     @classmethod
     def from_cartesian(cls,
                        x:             'autode.opt.cartesian.CartesianCoordinates',
-                       primitive_type: PIC = InverseDistances):
+                       primitive_type: Type[PIC] = InverseDistances):
         """
         Convert cartesian coordinates to primitives then to delocalised
         internal coordinates (DICs), of which there should be 3N-6 for a
@@ -72,6 +73,8 @@ class DIC(InternalCoordinates):
         U = cls.U(primitives)
 
         s = cls(input_array=np.matmul(U.T, primitives.q))
+        s.e = x.e  # Energy
+
         s.B = np.matmul(U.T, primitives.B)
         s.B_T_inv = np.linalg.pinv(s.B)
         s._x = x.copy()
@@ -172,10 +175,10 @@ class DIC(InternalCoordinates):
                     f'{time() - start_time:.4f} s')
 
         self[:] = s_k
-        self.clear_gradient_and_hessian()
+        self.clear_tensors()
 
         self._x = x_k
-        self._x.clear_gradient_and_hessian()
+        self._x.clear_tensors()
         return None
 
     def _iadd(self, other: np.ndarray):

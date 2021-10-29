@@ -119,9 +119,6 @@ class ArmijoLineSearch(LineSearchOptimiser):
         """
         super().__init__(maxiter=maxiter, direction=direction)
 
-        # Initial energy, used for determining convergence of the line search
-        self._init_e: Optional['autode.values.PotentialEnergy'] = None
-
         self.beta = float(beta)
         self.tau = float(tau)
         self.alpha = float(alpha_init)
@@ -161,12 +158,8 @@ class ArmijoLineSearch(LineSearchOptimiser):
                            'or gradients')
             return False
 
-        # Ensure the initial energy value is set base on the current energy
-        if self._init_e is None:
-            self._init_e = self._species.energy
-
         term_2 = self.alpha * self.beta * np.dot(self._init_coords.g, self.p)
-        return self._species.energy < self._init_e + term_2
+        return self._coords.e < self._init_coords.e + term_2
 
     def _log_convergence(self) -> None:
         pass

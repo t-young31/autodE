@@ -28,7 +28,7 @@ class TestSDLineSearch(LineSearchOptimiser):
     @property
     def converged(self) -> bool:
         """Simple convergence criteria"""
-        return self._species.energy is not None and self._species.energy < 0.001
+        return self._coords.e is not None and self._coords.e < 0.001
 
     def _log_convergence(self) -> None:
         pass  # print(self._e_prev, self._species.energy)
@@ -42,7 +42,7 @@ class TestSDLineSearch(LineSearchOptimiser):
     def _update_gradient_and_energy(self) -> None:
 
         x, y = self._coords
-        self._species.energy, self._coords.g = self.energy_grad_func(x, y)
+        self._coords.e, self._coords.g = self.energy_grad_func(x, y)
 
 
 class TestArmijoLineSearch(ArmijoLineSearch):
@@ -88,7 +88,7 @@ def test_armijo_line_search_default():
 
     # Minimum is at (0, 0). Should be close to that point with 0 energy
     assert np.allclose(optimiser._coords, np.array([0.0, 0.0]))
-    assert np.isclose(optimiser._species.energy, 0.0)
+    assert np.isclose(optimiser._coords.e, 0.0)
 
 
 def test_armijo_line_search_diff_step_sizes():
@@ -115,5 +115,5 @@ def test_armijo_line_search_complex_func():
     optimiser.run(Molecule(name='blank'), method=Method())
 
     assert optimiser.converged
-    assert optimiser._species.energy < optimiser._init_e
+    assert optimiser._coords.e < optimiser._init_coords.e
 
