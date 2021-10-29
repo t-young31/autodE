@@ -87,8 +87,10 @@ class ArmijoLineSearch(LineSearchOptimiser):
                  tau:        float = 0.5,
                  alpha_init: float = 1.0):
         """
-        Backtracking line search by Armijo. Reduces the step size iterativly
+        Backtracking line search by Armijo. Reduces the step size iteratively
         until the convergence condition is satisfied
+
+        [1] L. Armijo. Pacific J. Math. 16, 1966, 1. DOI:10.2140/pjm.1966.16.1.
 
         ----------------------------------------------------------------------
         Arguments:
@@ -107,6 +109,7 @@ class ArmijoLineSearch(LineSearchOptimiser):
         """
         super().__init__(maxiter=maxiter, direction=direction)
 
+        # Initial energy, used for determining convergence of the line search
         self._init_e: Optional['autode.values.PotentialEnergy'] = None
 
         self.beta = float(beta)
@@ -117,7 +120,7 @@ class ArmijoLineSearch(LineSearchOptimiser):
         """Take a step in the line search"""
 
         self.alpha *= self.tau
-        self._coords += self.alpha * self.p
+        self._coords = self._init_coords + self.alpha * self.p
 
         return None
 
@@ -134,7 +137,7 @@ class ArmijoLineSearch(LineSearchOptimiser):
 
         .. math::
 
-            f(x + \alpha^{(l)} p_k) \le f(x) + \alpha^{(l)} \Beta g\cdot p
+            f(x + \alpha^{(l)} p_k) \le f(x) + \alpha^{(l)} \beta g\cdot p
 
         where α is the step size at the current iteration (denoted by l) and
         β is a variable parameter. The search direction p, gradient are defined
@@ -143,6 +146,14 @@ class ArmijoLineSearch(LineSearchOptimiser):
         Returns:
             (bool): If the search is converged
         """
+        if self._init_coords is None or self._init_coords.g is None:
+            logger.warning('No convergence without defined coordinates '
+                           'or gradients')
+            return False
+
+        # Ensure the initial energy value is set base on the current energy
+        if self._init_e is None:
+            self._init_e = self._species.energy
 
         term_2 = self.alpha * self.beta * np.dot(self._init_coords.g, self.p)
         return self._species.energy < self._init_e + term_2

@@ -104,7 +104,9 @@ class Optimiser(ABC):
                                f'*{self._maxiter}*. Did not converge')
                 break
 
+        self._log_convergence()
         logger.info(f'Converged: {self.converged}, in {self.iteration} cycles')
+
         self.iteration = 0
         return None
 
