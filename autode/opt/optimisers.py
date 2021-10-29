@@ -161,6 +161,7 @@ class Optimiser(ABC):
         self._species.gradient = grad.get_gradients()
         grad.clean_up(force=True, everything=True)
 
+        self._coords.e = self._species.energy
         self._coords.g = self._species.gradient.flatten()
         self._coords = self._coords.to(coord_type_str)
         return None

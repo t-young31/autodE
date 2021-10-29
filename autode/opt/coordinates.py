@@ -1,7 +1,8 @@
 import numpy as np
+from typing import Optional
 from abc import ABC, abstractmethod
 from autode.units import (ang, nm, pm, m)
-from autode.values import ValueArray
+from autode.values import ValueArray, PotentialEnergy
 
 
 class OptCoordinates(ValueArray, ABC):
@@ -17,7 +18,10 @@ class OptCoordinates(ValueArray, ABC):
         """New instance of these coordinates"""
 
         arr = super().__new__(cls, input_array, units)
-        arr._g, arr._h = None, None
+
+        arr._e = None              # Energy
+        arr._g = None              # Gradient: dE/dX
+        arr._h = None              # Hessian:  d2E/dX_idX_j
         arr.B = None               # Wilson B matrix
         arr.B_T_inv = None         # Generalised inverse of B
 
@@ -26,25 +30,35 @@ class OptCoordinates(ValueArray, ABC):
     def __array_finalize__(self, obj: 'OptCoordinates') -> None:
         """See https://numpy.org/doc/stable/user/basics.subclassing.html"""
 
-        for attr in ('units', '_g', '_h', 'B', 'B_T_inv'):
+        for attr in ('units', '_e', '_g', '_h', 'B', 'B_T_inv'):
             self.__dict__[attr] = getattr(obj, attr, None)
 
         return None
 
     @property
-    def g(self) -> np.ndarray:
-        """Gradient of the energy: {dE/dx_i}"""
-        return self._g
+    def e(self) -> Optional[PotentialEnergy]:
+        """Energy"""
+        return self._e
+
+    @e.setter
+    def e(self, value):
+        """Set the energy"""
+        self._e = None if value is None else PotentialEnergy(value)
 
     @property
-    def h(self) -> np.ndarray:
-        """Second derivatives of the energy: {d^2E/dx_idx_j^2}"""
-        return self._h
+    def g(self) -> Optional[np.ndarray]:
+        """Gradient of the energy: {dE/dx_i}"""
+        return self._g
 
     @g.setter
     def g(self, value: np.ndarray):
         """Set the gradient of the energy"""
         self._g = value
+
+    @property
+    def h(self) -> Optional[np.ndarray]:
+        """Second derivatives of the energy: {d^2E/dx_idx_j^2}"""
+        return self._h
 
     @h.setter
     def h(self, value: np.ndarray):
@@ -63,7 +77,7 @@ class OptCoordinates(ValueArray, ABC):
         the gradient and hessian shouldn't be cleared.
         """
 
-        self.clear_gradient_and_hessian()
+        self.clear_tensors()
         return super().__setitem__(key, value)
 
     @abstractmethod
@@ -82,7 +96,7 @@ class OptCoordinates(ValueArray, ABC):
             (autode.opt.coordinates.OptCoordinates): Shifted coordinates
         """
         self._iadd(other)
-        self.clear_gradient_and_hessian()
+        self.clear_tensors()
         return self
 
     def __isub__(self, other: np.ndarray):
@@ -98,11 +112,11 @@ class OptCoordinates(ValueArray, ABC):
         """
         return self.__iadd__(-other)
 
-    def clear_gradient_and_hessian(self) -> None:
+    def clear_tensors(self) -> None:
         """
-        Clear the gradient and Hessian for these coordinates. Called if the
-        coordinates have been perturbed, making these derivatives not
-        accurate any more for the new coordinates
+        Helper function for clearing the energy, gradient and Hessian for these
+        coordinates. Called if the coordinates have been perturbed, making
+        these quantities not accurate any more for the new coordinates
         """
-        self._g, self._h = None, None
+        self._e, self._g, self._h = None, None, None
         return None
