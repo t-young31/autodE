@@ -1,12 +1,20 @@
 import numpy as np
 from abc import ABC
+from typing import Type
+from autode.log import logger
 from autode.opt.optimisers import NDOptimiser
-from autode.opt.line_search import ArmijoLineSearch
+from autode.opt.line_search import LineSearchOptimiser, ArmijoLineSearch
 
 
 class BFGSOptimiser(NDOptimiser, ABC):
 
-    def __init__(self, maxiter, gtol, etol, step_size=0.2, **kwargs):
+    def __init__(self,
+                 maxiter:          int,
+                 gtol:             'autode.values.GradientNorm',
+                 etol:             'autode.values.PotentialEnergy',
+                 step_size:        float = 0.2,
+                 line_search_type: Type[LineSearchOptimiser] = ArmijoLineSearch,
+                 **kwargs):
         """
         Broyden–Fletcher–Goldfarb–Shanno optimiser. Implementation taken
         from: https://tinyurl.com/526yymsw
@@ -22,17 +30,16 @@ class BFGSOptimiser(NDOptimiser, ABC):
         """
         super().__init__(maxiter=maxiter, gtol=gtol, etol=etol, **kwargs)
 
+        self._line_search_type = line_search_type
         self._init_alpha = step_size
 
     def _step(self) -> None:
         r"""
-        Perform a BFGS step by for each iteration (k) by:
+        Perform a BFGS step by for each iteration (k). Requires an initial
+        guess of the Hessian matrix i.e. (self._coords.h must be defined).
+        Steps follow:
 
-
-        1. If beyond the first iteration (k > 0):
-
-        .. math::
-            H_0 = I_n
+        1. Determine the inverse Hessian
 
 
 
@@ -57,11 +64,57 @@ class BFGSOptimiser(NDOptimiser, ABC):
         positions accordingly (:math:`X_{k+1} = X_{k} + s_k`)
 
         """
-        p = np.matmul(np.linalg.inv(self._coords.h), -self._coords.g)
+        self._update_h_inv()
 
-        ls = ArmijoLineSearch(direction=p, init_alpha=self._init_alpha)
-        ls.run(self._species, self._method, n_cores=self._n_cores)
+        p = np.matmul(self._coords.h_inv, -self._coords.g)
 
-        s = ls.alpha * p
+        ls = self._line_search_type(direction=p,
+                                    init_alpha=self._init_alpha,
+                                    coords=self._coords.copy())
+
+        ls.run(self._species, self._method,
+               n_cores=self._n_cores)
+
+        self._coords = self._coords + ls.alpha * p
+
+        return None
+
+    def _update_h_inv(self) -> None:
+        r"""
+        Update the inverse of the Hessian matrix :math:`H^{-1}` for the
+        current set of coordinates. If the first iteration then use the true
+        inverse of the (estimated) Hessian, otherwise update the inverse using:
+
+        .. math::
+
+            H_l^{-1} = H_k^{-1} +
+                       \frac{(s_k^Ty_k + y_k^T H_k^{-1} y_k) s_k^T s_k}
+                            {s_k^T y_k} -
+                        \frac{H_k^{-1} y_k s_k^T + s_k y_k^T H_k^{-1}}
+                             {s_k^T y_k}
+
+        where :math:`k = l - 1,\; s_k = x_l - x_k,\; \boldsymbol{y}_l =
+        \nabla E_l - \nabla E_k`.
+        """
+
+        if self.iteration == 0:
+            logger.info('First iteration so using exact inverse, H^-1')
+            self._coords.h_inv = np.linalg.inv(self._coords.h)
+            return
+
+        coords_l, coords_k = self._coords, self._history.penultimate
+
+        h_inv_k = coords_k.h_inv
+        s_k = coords_l - coords_k
+        y_k = coords_l.g - coords_k.g
+
+        s_y, s_s = np.dot(s_k.T, y_k), np.outer(s_k, s_k.T)
+        y_h_inv_y = np.linalg.multi_dot((y_k.T, h_inv_k, y_k))
+        h_inv_y_s = np.outer(np.matmul(h_inv_k, y_k), s_k.T)
+        s_y_h_inv = np.outer(s_k, np.matmul(y_k.T, h_inv_k))
+
+        coords_l.h_inv = (h_inv_k
+                          + (s_y + y_h_inv_y)*s_s/(s_y**2)
+                          - (h_inv_y_s + s_y_h_inv) / s_y)
 
         return None

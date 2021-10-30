@@ -1,48 +1,13 @@
 import numpy as np
-from copy import deepcopy
 from autode.species import Molecule
 from autode.wrappers.base import Method
 from autode.opt.cartesian import CartesianCoordinates
-from autode.opt.line_search import (LineSearchOptimiser,
-                                    ArmijoLineSearch)
+from autode.opt.line_search import ArmijoLineSearch
+from .optimiers import TestSDLineSearch
 
 
 def quadratic(x, y):
     return x**2 + y**2, np.array([2*x, 2*y])
-
-
-class TestSDLineSearch(LineSearchOptimiser):
-    """Line search for E = x^2 + y^2"""
-
-    __test__ = False
-
-    def __init__(self,
-                 init_step_size=0.1,
-                 energy_grad_func=quadratic,
-                 ):
-        super().__init__(maxiter=100)
-
-        self.energy_grad_func = energy_grad_func
-        self.alpha = init_step_size
-
-    @property
-    def converged(self) -> bool:
-        """Simple convergence criteria"""
-        return self.iteration > 0 and self._coords.e is not None and self._coords.e < 0.001
-
-    def _log_convergence(self) -> None:
-        pass  # print(self._coords.e)
-
-    def _initialise_coordinates(self) -> None:
-        self._coords = CartesianCoordinates(np.array([0.1, 0.2]))
-
-    def _step(self) -> None:
-        self._coords += self.alpha * self.p
-
-    def _update_gradient_and_energy(self) -> None:
-
-        x, y = self._coords
-        self._coords.e, self._coords.g = self.energy_grad_func(x, y)
 
 
 class TestArmijoLineSearch(ArmijoLineSearch):

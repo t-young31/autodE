@@ -22,6 +22,7 @@ class OptCoordinates(ValueArray, ABC):
         arr._e = None              # Energy
         arr._g = None              # Gradient: dE/dX
         arr._h = None              # Hessian:  d2E/dX_idX_j
+        arr._h_inv = None          # Inverse of the Hessian: H^-1
         arr.B = None               # Wilson B matrix
         arr.B_T_inv = None         # Generalised inverse of B
 
@@ -30,7 +31,7 @@ class OptCoordinates(ValueArray, ABC):
     def __array_finalize__(self, obj: 'OptCoordinates') -> None:
         """See https://numpy.org/doc/stable/user/basics.subclassing.html"""
 
-        for attr in ('units', '_e', '_g', '_h', 'B', 'B_T_inv'):
+        for attr in ('units', '_e', '_g', '_h', '_h_inv', 'B', 'B_T_inv'):
             self.__dict__[attr] = getattr(obj, attr, None)
 
         return None
@@ -63,7 +64,30 @@ class OptCoordinates(ValueArray, ABC):
     @h.setter
     def h(self, value: np.ndarray):
         """Set the second derivatives of the energy"""
+        if not value.ndim == 2 and value.shape[0] == value.shape[1]:
+            raise ValueError(f'Hessian must be an NxN matrix. Had: {value}')
+
         self._h = value
+
+    @property
+    def h_inv(self) -> Optional[np.ndarray]:
+        """
+        Inverse of the Hessian matrix: :math:`H^{-1}`
+
+        -----------------------------------------------------------------------
+        Returns:
+            (np.ndarray | None): :math:`H^{-1}`
+        """
+        return self._h_inv
+
+    @h_inv.setter
+    def h_inv(self, value: np.ndarray):
+        """Set the inverse hessian matrix"""
+        if not value.ndim == 2 and value.shape[0] == value.shape[1]:
+            raise ValueError('Inverse Hessian must be an NxN matrix. '
+                             f'Had: {value}')
+
+        self._h_inv = value
 
     @abstractmethod
     def to(self, *args, **kwargs):

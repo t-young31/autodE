@@ -30,7 +30,7 @@ Optimisers
    :members:
    :undoc-members:
    :special-members: __init__
-   :private-members: _step
+   :private-members: _step, _update_h_inv
 
 |
 
