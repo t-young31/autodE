@@ -22,14 +22,14 @@ class SteepestDecent(NDOptimiser, ABC):
         self.step_size = step_size
 
     def _step(self) -> None:
-        """
-        Take a steepest decent step::
+        r"""
+        Take a steepest decent step:
 
         .. math::
 
-            x_{i+1} = x_{i} - d \nabla E
+            x_{i+1} = x_{i} - \alpha \nabla E
 
-        where d is the step size.
+        where :math:`\alpha` is the step size.
         """
         self._coords -= self.step_size * self._coords.g
 

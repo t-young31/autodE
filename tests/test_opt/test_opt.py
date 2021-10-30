@@ -4,9 +4,6 @@ import numpy as np
 from autode import Molecule, Atom
 from autode.methods import XTB
 from autode.values import GradientNorm, PotentialEnergy
-from autode.opt.internals import InverseDistances
-from autode.opt.primitives import InverseDistance
-from autode.opt.cartesian import CartesianCoordinates
 from autode.utils import work_in_tmp_dir
 from autode.opt.steepest_decent import (CartesianSDOptimiser,
                                         DIC_SD_Optimiser)

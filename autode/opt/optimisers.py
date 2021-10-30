@@ -33,7 +33,7 @@ class Optimiser(ABC):
         self._maxiter = int(maxiter)
         self.iteration = 0                # Current iteration
 
-        self._ncores:  int = Config.n_cores
+        self._n_cores:  int = Config.n_cores
 
         self._coords = coords
         self._species: Optional['autode.species.Species'] = None
@@ -79,13 +79,13 @@ class Optimiser(ABC):
             n_cores (int | None): Number of cores to use for the gradient
                         evaluations. If None then use autode.Config.n_cores
         """
-        self._ncores = n_cores if n_cores is not None else Config.n_cores
+        self._n_cores = n_cores if n_cores is not None else Config.n_cores
 
         self._initialise_species_and_method(species, method)
         self._initialise_run()
 
         logger.info(f'Using {self._method} to optimise {self._species.name} '
-                    f'with {self._ncores} cores using {self._maxiter} max '
+                    f'with {self._n_cores} cores using {self._maxiter} max '
                     f'iterations')
         logger.info('Iteration\t|∆E| / \\kcal mol-1 \t||∇E|| / Ha Å-1')
 
@@ -153,7 +153,7 @@ class Optimiser(ABC):
                            molecule=self._species,
                            method=self._method,
                            keywords=self._method.keywords.grad,
-                           n_cores=self._ncores)
+                           n_cores=self._n_cores)
         grad.run()
 
         # Update the energy and gradient for the species
