@@ -26,7 +26,15 @@ class BFGSOptimiser(NDOptimiser, ABC):
 
     def _step(self) -> None:
         r"""
-        Perform a BFGS step by for each iteration (k):
+        Perform a BFGS step by for each iteration (k) by:
+
+
+        1. If beyond the first iteration (k > 0):
+
+        .. math::
+            H_0 = I_n
+
+
 
         1. Solving
 
@@ -45,7 +53,8 @@ class BFGSOptimiser(NDOptimiser, ABC):
 
             \alpha_k = \text{arg min} E(X_k + \alpha \boldsymbol{p}_k)
 
-        and setting :math:`s_k = \alpha \boldsymbol{p}_k`.
+        and setting :math:`s_k = \alpha \boldsymbol{p}_k`, and updating the
+        positions accordingly (:math:`X_{k+1} = X_{k} + s_k`)
 
         """
         p = np.matmul(np.linalg.inv(self._coords.h), -self._coords.g)

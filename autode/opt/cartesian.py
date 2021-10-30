@@ -18,22 +18,14 @@ class CartesianCoordinates(OptCoordinates):
 
     def __array_finalize__(self, obj) -> None:
         """See https://numpy.org/doc/stable/user/basics.subclassing.html"""
-
-        if obj is None:
-            return
-
-        for attr in ('B', '_B_T_inv'):
-            self.__dict__[attr] = getattr(obj, attr, None)
-
-        return super().__array_finalize__(obj)
+        return None if obj is None else super().__array_finalize__(obj)
 
     def _str_is_valid_unit(self, string) -> bool:
         """Is a string a valid unit for these coordinates e.g. nm"""
         return any(string in unit.aliases for unit in self.implemented_units)
 
-    def _iadd(self, value: np.ndarray) -> 'OptCoordinates':
-        np.ndarray.__iadd__(self, value)
-        return self
+    def iadd(self, value: np.ndarray) -> 'OptCoordinates':
+        return np.ndarray.__iadd__(self, value)
 
     def to(self, value: str) -> OptCoordinates:
         """

@@ -56,7 +56,7 @@ def test_opt():
     blank_mol = Molecule(name='blank')
     blank_method = Method()
 
-    optimiser = TestBFGSOptimiser()
+    optimiser = TestBFGSOptimiser(maxiter=100, etol=1E-4, gtol=1E-3)
     #optimiser.run(blank_mol, method=blank_method)
     # print(optimiser.converged)
 

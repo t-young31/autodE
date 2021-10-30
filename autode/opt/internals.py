@@ -28,7 +28,7 @@ class InternalCoordinates(OptCoordinates):
         """See https://numpy.org/doc/stable/user/basics.subclassing.html"""
         self._x = getattr(obj, '_x', None)
         self.primitive_type = getattr(obj, 'primitive_type', None)
-        return None
+        return OptCoordinates.__array_finalize__(self, obj)
 
 
 class PIC(list, ABC):

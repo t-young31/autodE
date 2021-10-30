@@ -81,12 +81,12 @@ class OptCoordinates(ValueArray, ABC):
         return super().__setitem__(key, value)
 
     @abstractmethod
-    def _iadd(self, value: np.ndarray) -> 'OptCoordinates':
+    def iadd(self, value: np.ndarray) -> 'OptCoordinates':
         """Inplace addition of some coordinates"""
 
-    def __iadd__(self, other: np.ndarray):
+    def __add__(self, other: np.ndarray):
         """
-        Inplace addition of another set of coordinates. Clears the current
+        Eddition of another set of coordinates. Clears the current
         gradient vector and Hessian matrix.
 
         Arguments:
@@ -95,11 +95,13 @@ class OptCoordinates(ValueArray, ABC):
         Returns:
             (autode.opt.coordinates.OptCoordinates): Shifted coordinates
         """
-        self._iadd(other)
-        self.clear_tensors()
-        return self
+        new_coords = self.copy()
+        new_coords.clear_tensors()
+        new_coords.iadd(other)
 
-    def __isub__(self, other: np.ndarray):
+        return new_coords
+
+    def __sub__(self, other: np.ndarray):
         """
         Inplace subtraction of another set of coordinates. Clears the current
         gradient vector and Hessian matrix.
@@ -110,7 +112,21 @@ class OptCoordinates(ValueArray, ABC):
         Returns:
             (autode.opt.coordinates.OptCoordinates): Shifted coordinates
         """
-        return self.__iadd__(-other)
+        return self.__add__(-other)
+
+    def __rsub__(self, other):
+        return self.__sub__(other)
+
+    def __radd__(self, other):
+        return self.__add__(other)
+
+    def __iadd__(self, other):
+        self.clear_tensors()
+        return self.__add__(other)
+
+    def __isub__(self, other):
+        self.clear_tensors()
+        return self.__sub__(other)
 
     def clear_tensors(self) -> None:
         """
