@@ -369,7 +369,7 @@ class NDOptimiser(Optimiser):
             logger.info('First iteration - returning |∆E| = ∞')
             return PotentialEnergy(np.inf)
 
-        e1, e2 = self._history[-1].e, self._history[-2].e
+        e1, e2 = self._coords.e, self._history.penultimate.e
 
         if e1 is None or e2 is None:
             raise RuntimeError('Cannot determing')
@@ -406,3 +406,18 @@ class NDOptimiser(Optimiser):
 
 class _OptimiserHistory(list):
     """Sequential history of coordinates"""
+
+    @property
+    def penultimate(self) -> OptCoordinates:
+        """
+        Last but one set of coordinates (the penultimate set)
+
+        -----------------------------------------------------------------------
+        Returns:
+            (autode.opt.OptCoordinates):
+        """
+        if len(self) < 2:
+            raise IndexError('Cannot obtain the penultimate set of '
+                             f'coordinates, only had {len(self)}')
+
+        return self[-2]

@@ -1,13 +1,11 @@
 """
 Line search optimisers used to solve the 1D optimisation problem by
-taking steps :math:`X_{i+1} = X_i + \alpha p`, where α is a step size and p is
+taking steps :math:`X_{i+1} = X_i + \\alpha p` , where α is a step size and p is
 a search direction. See e.g.
 https://www.numerical.rl.ac.uk/people/nimg/oumsc/lectures/uepart2.2.pdf
 """
-
 import numpy as np
 from abc import ABC, abstractmethod
-from copy import deepcopy
 from typing import Optional
 from autode.log import logger
 from autode.opt.cartesian import CartesianCoordinates
@@ -20,11 +18,15 @@ class LineSearchOptimiser(Optimiser, ABC):
     def __init__(self,
                  maxiter:   int,
                  direction: Optional[np.ndarray] = None,
-                 coords:    Optional['autode.opt.coordinates.OptCoordinates'] = None):
+                 coords:    Optional['autode.opt.coordinates.OptCoordinates'] = None,
+                 init_alpha: float = 1.0):
         """
         Line search optimiser
 
         -----------------------------------------------------------------------
+        Arguments:
+            maxiter (int): Maximum number of iterations to perform
+
         Keyword Arguments:
             direction (np.ndarray | None): Direction which to move the
                       coordinates. Shape must be broadcastable to the
@@ -33,11 +35,13 @@ class LineSearchOptimiser(Optimiser, ABC):
             coords (autode.opt.coordinates.OptCoordinates | None): Initial
                     coordinates. If None then they will be initialised from the
                     species at runtime
+
+            init_alpha (float): Initial step size
         """
         super().__init__(maxiter=maxiter, coords=coords)
 
-        self.p:     Optional[np.ndarray] = direction     # Direction
-        self.alpha: Optional[float] = None               # Step size
+        self.p: Optional[np.ndarray] = direction     # Direction
+        self.alpha = init_alpha                      # Step size
 
     @classmethod
     def optimise(cls,
@@ -99,7 +103,8 @@ class ArmijoLineSearch(LineSearchOptimiser):
                  direction:  Optional[np.ndarray] = None,
                  beta:       float = 0.1,
                  tau:        float = 0.5,
-                 init_alpha: float = 1.0):
+                 init_alpha: float = 1.0,
+                 coords:     Optional['autode.opt.coordinates.OptCoordinates'] = None):
         """
         Backtracking line search by Armijo. Reduces the step size iteratively
         until the convergence condition is satisfied
@@ -121,7 +126,7 @@ class ArmijoLineSearch(LineSearchOptimiser):
 
             init_alpha (float): α_0 parameter. Initial value of the step size.
         """
-        super().__init__(maxiter=maxiter, direction=direction)
+        super().__init__(maxiter, direction=direction, coords=coords)
 
         self.beta = float(beta)
         self.tau = float(tau)
