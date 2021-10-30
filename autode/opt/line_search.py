@@ -39,9 +39,6 @@ class LineSearchOptimiser(Optimiser, ABC):
         self.p:     Optional[np.ndarray] = direction     # Direction
         self.alpha: Optional[float] = None               # Step size
 
-        # Saved copy of the initial coordinates
-        self._init_coords = deepcopy(self._coords)
-
     @classmethod
     def optimise(cls,
                  species:   'autode.species.Species',
@@ -81,9 +78,18 @@ class LineSearchOptimiser(Optimiser, ABC):
                 self._update_gradient_and_energy()
 
             self.p = -self._coords.g
-
-        self._init_coords = deepcopy(self._coords)
         return None
+
+    @property
+    def _init_coords(self) -> Optional['autode.opt.coordinates.OptCoordinates']:
+        """
+        Initial coordinates from which this line search was initialised from
+
+        -----------------------------------------------------------------------
+        Returns:
+            (autode.opt.coordinates.OptCoordinates | None):
+        """
+        return None if len(self._history) == 0 else self._history[0]
 
 
 class ArmijoLineSearch(LineSearchOptimiser):

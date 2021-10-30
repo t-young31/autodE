@@ -155,7 +155,7 @@ class DIC(InternalCoordinates):
         iteration = 0
 
         # Converge to an RMS difference of less than a tolerance
-        while np.average(s_k - s_new) ** 2 > 1E-10 and iteration < 100:
+        while np.average(s_k - s_new) ** 2 > 1E-16 and iteration < 100:
 
             x_k = x_k + np.matmul(self.B_T_inv, (s_new - s_k))
 
@@ -181,7 +181,7 @@ class DIC(InternalCoordinates):
         self._x.clear_tensors()
         return None
 
-    def _iadd(self, other: np.ndarray):
+    def iadd(self, value: np.ndarray) -> 'OptCoordinates':
         """Inplace addition of another set of coordinates"""
-        self.update(delta=other)
+        self.update(delta=value)
         return self

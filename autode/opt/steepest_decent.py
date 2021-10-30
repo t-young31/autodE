@@ -19,7 +19,7 @@ class SteepestDecent(NDOptimiser, ABC):
         """
         super().__init__(maxiter=maxiter, gtol=gtol, etol=etol, **kwargs)
 
-        self.step_size = step_size
+        self.alpha = step_size
 
     def _step(self) -> None:
         r"""
@@ -31,7 +31,7 @@ class SteepestDecent(NDOptimiser, ABC):
 
         where :math:`\alpha` is the step size.
         """
-        self._coords -= self.step_size * self._coords.g
+        self._coords = self._coords - self.alpha * self._coords.g
 
 
 class CartesianSDOptimiser(SteepestDecent):

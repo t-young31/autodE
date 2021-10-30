@@ -31,15 +31,13 @@ class Optimiser(ABC):
                              f'step, but tried to set maxiter = {maxiter}')
 
         self._maxiter = int(maxiter)
-        self.iteration = 0                # Current iteration
-
         self._n_cores:  int = Config.n_cores
+
+        self._history = _OptimiserHistory()
 
         self._coords = coords
         self._species: Optional['autode.species.Species'] = None
         self._method:  Optional['autode.wrappers.base.Method'] = None
-
-        self._e_prev = PotentialEnergy(np.inf, units='Ha')  # Previous energy
 
     @classmethod
     @abstractmethod
@@ -91,24 +89,30 @@ class Optimiser(ABC):
 
         while not self.converged:
 
-            self._step()                                  # Update self._coords
+            self._step()                                # Update self._coords
+            self._update_gradient_and_energy()          # Update self._coords.g
 
             self._log_convergence()
-            self.iteration += 1
-
-            self._e_prev = self._species.energy
-            self._update_gradient_and_energy()          # Update self._coords.g
 
             if self.iteration >= self._maxiter:
                 logger.warning(f'Reached the maximum number of iterations '
                                f'*{self._maxiter}*. Did not converge')
                 break
 
-        self._log_convergence()
         logger.info(f'Converged: {self.converged}, in {self.iteration} cycles')
-
-        self.iteration = 0
         return None
+
+    @property
+    def iteration(self) -> int:
+        """
+        Iteration of the optimiser, which is equal to the length of the history
+        minus one, for zero indexing.
+
+        -----------------------------------------------------------------------
+        Returns:
+            (int): Current iteration
+        """
+        return len(self._history) - 1
 
     def _initialise_species_and_method(self,
                                        species: 'autode.species.Species',
@@ -146,8 +150,8 @@ class Optimiser(ABC):
         coord_type_str = type(self._coords).__name__
 
         # Calculations need to be performed in cartesian coordinates
-        self._coords = self._coords.to('cart')
-        self._species.coordinates = np.array(self._coords, copy=True)
+        cart_coords = self._coords.to('cart')
+        self._species.coordinates = cart_coords
 
         grad = Calculation(name=f'{self._species.name}_opt_{self.iteration}',
                            molecule=self._species,
@@ -156,15 +160,47 @@ class Optimiser(ABC):
                            n_cores=self._n_cores)
         grad.run()
 
-        # Update the energy and gradient for the species
-        self._species.energy = grad.get_energy()
+        self._coords.e = self._species.energy = grad.get_energy()
         self._species.gradient = grad.get_gradients()
         grad.clean_up(force=True, everything=True)
 
-        self._coords.e = self._species.energy
-        self._coords.g = self._species.gradient.flatten()
-        self._coords = self._coords.to(coord_type_str)
+        cart_coords.g = self._species.gradient.flatten()
+        self._coords.g = cart_coords.to(coord_type_str).g
         return None
+
+    @property
+    def _coords(self) -> Optional[OptCoordinates]:
+        """
+        Current set of coordinates this optimiser is using
+        """
+        if len(self._history) == 0:
+            logger.warning('Optimiser had no history, thus no coordinates')
+            return None
+
+        return self._history[-1]
+
+    @_coords.setter
+    def _coords(self, value: Optional[OptCoordinates]) -> None:
+        """
+        Set a new set of coordinates of this optimiser, will append to the
+        current history.
+
+        -----------------------------------------------------------------------
+        Arguments:
+            value (OptCoordinates | None):
+
+        Raises:
+            (ValueError): For invalid input
+        """
+        if value is None:
+            return
+
+        elif isinstance(value, OptCoordinates):
+            self._history.append(value.copy())
+
+        else:
+            raise ValueError('Cannot set the optimiser coordinates with '
+                             f'{value}')
 
     @abstractmethod
     def _step(self) -> None:
@@ -329,19 +365,17 @@ class NDOptimiser(Optimiser):
                                   an energy difference cannot be calculated
         """
 
-        if not hasattr(self._species, 'energy'):
-            logger.error('self._species did not have an energy attribute. '
-                         'Returning |∆E| = ∞')
+        if len(self._history) < 2:
+            logger.info('First iteration - returning |∆E| = ∞')
             return PotentialEnergy(np.inf)
 
-        if self._species.energy is None:
-            return PotentialEnergy(np.inf)
+        e1, e2 = self._history[-1].e, self._history[-2].e
+
+        if e1 is None or e2 is None:
+            raise RuntimeError('Cannot determing')
 
         # NOTE: no abs() call to preserve PotentialEnergy type
-        if self._species.energy > self._e_prev:
-            return self._species.energy - self._e_prev
-        else:
-            return self._e_prev - self._species.energy
+        return e1 - e2 if (e1 > e2) else e2 - e1
 
     @property
     def _g_norm(self) -> GradientNorm:
@@ -368,3 +402,7 @@ class NDOptimiser(Optimiser):
                     f'{self._g_norm:.5f}')
 
         return None
+
+
+class _OptimiserHistory(list):
+    """Sequential history of coordinates"""
