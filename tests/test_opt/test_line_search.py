@@ -51,7 +51,7 @@ class TestArmijoLineSearch(ArmijoLineSearch):
 
     def __init__(self, init_step_size=1.0, energy_grad_func=quadratic):
         super().__init__(maxiter=10,
-                         alpha_init=init_step_size)
+                         init_alpha=init_step_size)
 
         self.energy_grad_func = energy_grad_func
 
@@ -116,4 +116,3 @@ def test_armijo_line_search_complex_func():
 
     assert optimiser.converged
     assert optimiser._coords.e < optimiser._init_coords.e
-

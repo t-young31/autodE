@@ -1,10 +1,7 @@
 """
 Line search optimisers used to solve the 1D optimisation problem by
-taking steps
-
-                X_{i+1} = X_i + α p
-
-where α is a step size and p is a search direction. See e.g.
+taking steps :math:`X_{i+1} = X_i + \alpha p`, where α is a step size and p is
+a search direction. See e.g.
 https://www.numerical.rl.ac.uk/people/nimg/oumsc/lectures/uepart2.2.pdf
 """
 
@@ -39,7 +36,8 @@ class LineSearchOptimiser(Optimiser, ABC):
         """
         super().__init__(maxiter=maxiter, coords=coords)
 
-        self.p: Optional[np.ndarray] = direction
+        self.p:     Optional[np.ndarray] = direction     # Direction
+        self.alpha: Optional[float] = None               # Step size
 
         # Saved copy of the initial coordinates
         self._init_coords = deepcopy(self._coords)
@@ -91,11 +89,11 @@ class LineSearchOptimiser(Optimiser, ABC):
 class ArmijoLineSearch(LineSearchOptimiser):
 
     def __init__(self,
-                 maxiter:    int,
+                 maxiter:    int = 10,
                  direction:  Optional[np.ndarray] = None,
                  beta:       float = 0.1,
                  tau:        float = 0.5,
-                 alpha_init: float = 1.0):
+                 init_alpha: float = 1.0):
         """
         Backtracking line search by Armijo. Reduces the step size iteratively
         until the convergence condition is satisfied
@@ -115,13 +113,13 @@ class ArmijoLineSearch(LineSearchOptimiser):
             tau (float): τ parameter. Multiplicative factor when reducing the
                          step size.
 
-            alpha_init (float): α_0 parameter. Initial value of the step size.
+            init_alpha (float): α_0 parameter. Initial value of the step size.
         """
         super().__init__(maxiter=maxiter, direction=direction)
 
         self.beta = float(beta)
         self.tau = float(tau)
-        self.alpha = float(alpha_init)
+        self.alpha = float(init_alpha)
 
     def _step(self) -> None:
         """Take a step in the line search"""
