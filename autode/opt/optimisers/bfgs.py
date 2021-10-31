@@ -2,8 +2,9 @@ import numpy as np
 from abc import ABC
 from typing import Type
 from autode.log import logger
-from autode.opt.optimisers import NDOptimiser
-from autode.opt.line_search import LineSearchOptimiser, ArmijoLineSearch
+from autode.opt.optimisers.base import NDOptimiser
+from autode.opt.optimisers.line_search import (LineSearchOptimiser,
+                                               ArmijoLineSearch)
 
 
 class BFGSOptimiser(NDOptimiser, ABC):

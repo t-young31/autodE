@@ -17,8 +17,10 @@ U : Transformation matrix q -> s
 import numpy as np
 from time import time
 from typing import Type
-from autode.opt.internals import PIC, InverseDistances, InternalCoordinates
 from autode.log import logger
+from autode.opt.coordinates.internals import (PIC,
+                                              InverseDistances,
+                                              InternalCoordinates)
 
 
 class DIC(InternalCoordinates):

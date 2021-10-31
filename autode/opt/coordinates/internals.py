@@ -8,8 +8,8 @@ q : Primitive internal coordinates
 """
 import numpy as np
 from abc import ABC, abstractmethod
-from autode.opt.coordinates import OptCoordinates
-from autode.opt.primitives import InverseDistance
+from autode.opt.coordinates.base import OptCoordinates
+from autode.opt.coordinates.primitives import InverseDistance
 
 
 class InternalCoordinates(OptCoordinates):
@@ -34,7 +34,7 @@ class InternalCoordinates(OptCoordinates):
 class PIC(list, ABC):
     """Primitive internal coordinates"""
 
-    def __init__(self, x: 'autode.opt.cartesian.CartesianCoordinates'):
+    def __init__(self, x: 'autode.opt.CartesianCoordinates'):
         """
         Constructor for a set of primitives
 

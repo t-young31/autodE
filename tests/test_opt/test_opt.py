@@ -5,8 +5,8 @@ from autode import Molecule, Atom
 from autode.methods import XTB
 from autode.values import GradientNorm, PotentialEnergy
 from autode.utils import work_in_tmp_dir
-from autode.opt.steepest_decent import (CartesianSDOptimiser,
-                                        DIC_SD_Optimiser)
+from autode.opt.optimisers.steepest_decent import (CartesianSDOptimiser,
+                                                   DIC_SD_Optimiser)
 
 
 def methane_mol():

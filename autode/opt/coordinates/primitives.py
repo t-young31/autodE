@@ -6,14 +6,14 @@ class Primitive(ABC):
     """Primitive internal coordinate"""
 
     @abstractmethod
-    def __call__(self, x: 'autode.opt.cartesian.CartesianCoordinates'):
+    def __call__(self, x: 'autode.opt.CartesianCoordinates'):
         """Return the value of this PIC given a set of cartesian coordinates"""
 
     @abstractmethod
     def derivative(self,
                    i: int,
                    k: str,
-                   x: 'autode.opt.cartesian.CartesianCoordinates'):
+                   x: 'autode.opt.CartesianCoordinates'):
         """
         Calculate the derivative with respect to a cartesian coordinate::
 

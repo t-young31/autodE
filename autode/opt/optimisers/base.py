@@ -5,7 +5,7 @@ from autode.log import logger
 from autode.config import Config
 from autode.calculation import Calculation
 from autode.values import GradientNorm, PotentialEnergy
-from autode.opt.coordinates import OptCoordinates
+from autode.opt.coordinates.base import OptCoordinates
 
 
 class Optimiser(ABC):
@@ -13,7 +13,7 @@ class Optimiser(ABC):
 
     def __init__(self,
                  maxiter: int,
-                 coords:  Optional[OptCoordinates] = None):
+                 coords:  Optional['autode.opt.OptCoordinates'] = None):
         """
         Optimiser
 
