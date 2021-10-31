@@ -1,8 +1,8 @@
 import numpy as np
 from autode.species import Molecule
 from autode.wrappers.base import Method
-from autode.opt.cartesian import CartesianCoordinates
-from autode.opt.line_search import ArmijoLineSearch
+from autode.opt.coordinates.cartesian import CartesianCoordinates
+from autode.opt.optimisers.line_search import ArmijoLineSearch
 from .optimiers import TestSDLineSearch
 
 
@@ -40,7 +40,8 @@ def test_simple_line_search():
     assert optimiser.converged
 
     # Minimum is at (0, 0). Should be close to that
-    assert np.allclose(optimiser._coords, np.array([0.0, 0.0]))
+    assert np.allclose(optimiser._coords, np.array([0.0, 0.0]), atol=1E-1
+                       )
 
 
 def _test_armijo_line_search_default():

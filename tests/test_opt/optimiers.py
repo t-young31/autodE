@@ -1,7 +1,7 @@
 import numpy as np
-from autode.opt.cartesian import CartesianCoordinates
-from autode.opt.line_search import LineSearchOptimiser
-from autode.opt.bfgs import BFGSOptimiser
+from autode.opt.coordinates.cartesian import CartesianCoordinates
+from autode.opt.optimisers.line_search import LineSearchOptimiser
+from autode.opt.optimisers.bfgs import BFGSOptimiser
 
 
 def quadratic(x, y):
@@ -32,9 +32,9 @@ class TestBFGSOptimiser(BFGSOptimiser):
 
     __test__ = False
 
-    def __init__(self, maxiter=100, etol=1E-4, gtol=1E-3):
+    def __init__(self, maxiter=100, etol=1E-4, gtol=1E-3, coords=None):
         super().__init__(maxiter=maxiter, line_search_type=TestSDLineSearch,
-                         etol=etol, gtol=gtol, step_size=0.1)
+                         etol=etol, gtol=gtol, step_size=0.1, coords=coords)
 
     def _log_convergence(self) -> None:
         print(self._coords.e)
@@ -74,13 +74,13 @@ class TestSDLineSearch(LineSearchOptimiser):
     @property
     def converged(self) -> bool:
         """Simple convergence criteria"""
-        return self.iteration > 0 and self._coords.e is not None and self._coords.e < 0.001
+        return self.iteration > 0 and self._coords.e is not None and self._coords.e < 0.01
 
     def _log_convergence(self) -> None:
         pass  # print(self._coords.e)
 
     def _initialise_coordinates(self) -> None:
-        self._coords = CartesianCoordinates(np.array([0.1, 0.2]))
+        self._coords = CartesianCoordinates(np.array([1.1, 0.2]))
 
     def _step(self) -> None:
         self._coords += self.alpha * self.p

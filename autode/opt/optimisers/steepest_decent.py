@@ -1,6 +1,6 @@
 from abc import ABC
-from autode.opt.cartesian import CartesianCoordinates
-from autode.opt.optimisers import NDOptimiser
+from autode.opt.coordinates.cartesian import CartesianCoordinates
+from autode.opt.optimisers.base import NDOptimiser
 
 
 class SteepestDecent(NDOptimiser, ABC):

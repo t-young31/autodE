@@ -8,26 +8,25 @@ import numpy as np
 from abc import ABC, abstractmethod
 from typing import Optional
 from autode.log import logger
-from autode.opt.cartesian import CartesianCoordinates
-from autode.opt.optimisers import Optimiser
+from autode.opt.coordinates.cartesian import CartesianCoordinates
+from autode.opt.optimisers.base import Optimiser
 
 
 class LineSearchOptimiser(Optimiser, ABC):
     """Optimiser for a 1D line search in a direction"""
 
     def __init__(self,
-                 maxiter:   int,
-                 direction: Optional[np.ndarray] = None,
-                 coords:    Optional['autode.opt.coordinates.OptCoordinates'] = None,
+                 maxiter:    int = 10,
+                 direction:  Optional[np.ndarray] = None,
+                 coords:     Optional['autode.opt.OptCoordinates'] = None,
                  init_alpha: float = 1.0):
         """
         Line search optimiser
 
         -----------------------------------------------------------------------
-        Arguments:
+        Keyword Arguments:
             maxiter (int): Maximum number of iterations to perform
 
-        Keyword Arguments:
             direction (np.ndarray | None): Direction which to move the
                       coordinates. Shape must be broadcastable to the
                       coordinates. If None then will guess a sensible direction
@@ -47,7 +46,7 @@ class LineSearchOptimiser(Optimiser, ABC):
     def optimise(cls,
                  species:   'autode.species.Species',
                  method:    'autode.wrappers.base.Method',
-                 coords:     Optional['autode.opt.coordinates.OptCoordinates'] = None,
+                 coords:     Optional['autode.opt.OptCoordinates'] = None,
                  direction:  Optional[np.ndarray] = None,
                  maxiter:    int = 5,
                  n_cores:    Optional[int] = None
@@ -85,7 +84,7 @@ class LineSearchOptimiser(Optimiser, ABC):
         return None
 
     @property
-    def _init_coords(self) -> Optional['autode.opt.coordinates.OptCoordinates']:
+    def _init_coords(self) -> Optional['autode.opt.OptCoordinates']:
         """
         Initial coordinates from which this line search was initialised from
 
@@ -104,7 +103,7 @@ class ArmijoLineSearch(LineSearchOptimiser):
                  beta:       float = 0.1,
                  tau:        float = 0.5,
                  init_alpha: float = 1.0,
-                 coords:     Optional['autode.opt.coordinates.OptCoordinates'] = None):
+                 coords:     Optional['autode.opt.OptCoordinates'] = None):
         """
         Backtracking line search by Armijo. Reduces the step size iteratively
         until the convergence condition is satisfied

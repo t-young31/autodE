@@ -1,8 +1,8 @@
 import numpy as np
 from autode.log import logger
 from autode.values import ValueArray
-from autode.opt.coordinates import OptCoordinates
-from autode.opt.dic import DIC
+from autode.opt.coordinates.base import OptCoordinates
+from autode.opt.coordinates.dic import DIC
 
 
 class CartesianCoordinates(OptCoordinates):
