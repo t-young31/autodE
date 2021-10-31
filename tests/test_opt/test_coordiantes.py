@@ -4,6 +4,7 @@ from autode import Molecule, Atom
 from autode.opt.coordinates.internals import InverseDistances
 from autode.opt.coordinates.primitives import InverseDistance
 from autode.opt.coordinates.cartesian import CartesianCoordinates
+from autode.opt.coordinates.dic import DIC
 
 
 def methane_mol():
@@ -58,6 +59,17 @@ def test_cartesian_coordinates():
         _ = CartesianCoordinates(arr).to('X')
 
 
+def test_cartesian_coordinate_shift_type():
+
+    coords = CartesianCoordinates(np.array([0.0]))
+
+    # Shifting coordinates should retain the type
+    assert isinstance(coords - 0.1, CartesianCoordinates)
+    assert isinstance(0.1 - coords, CartesianCoordinates)
+    assert isinstance(coords + 0.1, CartesianCoordinates)
+    assert isinstance(0.1 + coords, CartesianCoordinates)
+
+
 def test_hessian_set():
 
     coords = CartesianCoordinates(np.array([1.0, 2.0]))
@@ -102,6 +114,15 @@ def test_cartesian_update_clear():
     assert x.h is None
 
 
+def test_basic_dic_properties():
+
+    x = DIC(np.array([1.0]))
+    assert 'dic' in repr(x).lower()
+
+    with pytest.raises(Exception):
+        _ = x.to('unknown coordinates')
+
+
 def test_cart_to_dic():
 
     arr = np.array([[0.0, 0.0, 0.0],
@@ -115,6 +136,7 @@ def test_cart_to_dic():
 
     # Delocalised internals should preserve the single internal coordinate
     dics = x.to('dic')
+    assert isinstance(dics, DIC)
     assert len(dics) == 1
     # and store the previous catesian coordinates
     assert hasattr(dics, '_x')
@@ -149,19 +171,6 @@ def test_simple_dic_to_cart():
     assert np.isclose(np.linalg.norm(arr_update[0, :] - arr_update[1, :]),
                       1.66666,
                       atol=1E-4)
-
-    # DICs must be updated with either 'new' or 'delta' kwargs
-    with pytest.raises(ValueError):
-        dic.update(1)
-
-    with pytest.raises(ValueError):
-        dic.update(an_undefined_keyword_argument=1)
-
-    with pytest.raises(ValueError):
-        dic.update(new=np.array([0, 1]))       # Wrong shape
-
-    with pytest.raises(Exception):
-        dic.update(delta=np.array([0, 1]))      # Wrong shape
 
 
 def test_methane_cart_to_dic():
