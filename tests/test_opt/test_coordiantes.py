@@ -58,6 +58,21 @@ def test_cartesian_coordinates():
         _ = CartesianCoordinates(arr).to('X')
 
 
+def test_hessian_set():
+
+    coords = CartesianCoordinates(np.array([1.0, 2.0]))
+
+    # Hessian and inverse must be NxN matrix, i.e. 2x2 here
+    for invalid_h in (None, 3, np.array([1.0]), np.arange(3),
+                      np.arange(9).reshape(3, 3), np.arange(6).reshape(2, 3)):
+
+        with pytest.raises(Exception):
+            coords.h = invalid_h
+
+        with pytest.raises(Exception):
+            coords.h_inv = invalid_h
+
+
 def test_cartesian_update_clear():
 
     arr = np.array([[0.0, 0.0, 0.0],
