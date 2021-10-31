@@ -1,6 +1,10 @@
+import shutil
 import numpy as np
+from autode.atoms import Atom
 from autode.species import Molecule
+from autode.utils import work_in_tmp_dir
 from autode.wrappers.base import Method
+from autode.methods import XTB
 from autode.opt.coordinates.cartesian import CartesianCoordinates
 from autode.opt.optimisers.line_search import ArmijoLineSearch
 from .optimiers import TestSDLineSearch
@@ -44,7 +48,7 @@ def test_simple_line_search():
                        )
 
 
-def _test_armijo_line_search_default():
+def test_armijo_line_search_default():
 
     optimiser = TestArmijoLineSearch()
     assert not optimiser.converged
@@ -57,7 +61,7 @@ def _test_armijo_line_search_default():
     assert np.isclose(optimiser._coords.e, 0.0)
 
 
-def _test_armijo_line_search_diff_step_sizes():
+def test_armijo_line_search_diff_step_sizes():
 
     # using different step sizes should also converge
     for init_step_size in (0.1, 0.5, 1.0, 2.0, 4.0, 10.0):
@@ -67,7 +71,7 @@ def _test_armijo_line_search_diff_step_sizes():
         assert optimiser.converged
 
 
-def _test_armijo_line_search_complex_func():
+def test_armijo_line_search_complex_func():
 
     def energy_grad(x, y):
         energy = 10*(y-x**2)**2 + (x-1)**2
@@ -82,3 +86,22 @@ def _test_armijo_line_search_complex_func():
 
     assert optimiser.converged
     assert optimiser._coords.e < optimiser._init_coords.e
+
+
+@work_in_tmp_dir()
+def test_xtb_h2_cart_opt():
+
+    if shutil.which('xtb') is None or not shutil.which('xtb').endswith('xtb'):
+        return
+
+    optimiser = ArmijoLineSearch()
+    assert not optimiser.converged
+
+    h2 = Molecule(name='h2', atoms=[Atom('H'), Atom('H', x=1.5)])
+
+    # Should not converge in only two steps
+    ArmijoLineSearch.optimise(species=h2, method=XTB(), maxiter=2)
+    assert not optimiser.converged
+
+    # Line search should step in the direction to reduce the distance
+    assert h2.distance(0, 1) < 1.4
