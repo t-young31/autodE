@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Optional
+from typing import Optional, Union
 from abc import ABC, abstractmethod
 from autode.units import (ang, nm, pm, m)
 from autode.values import ValueArray, PotentialEnergy
@@ -112,7 +112,7 @@ class OptCoordinates(ValueArray, ABC):
     def iadd(self, value: np.ndarray) -> 'OptCoordinates':
         """Inplace addition of some coordinates"""
 
-    def __add__(self, other: np.ndarray):
+    def __add__(self, other: Union[np.ndarray, float]):
         """
         Eddition of another set of coordinates. Clears the current
         gradient vector and Hessian matrix.
@@ -129,17 +129,7 @@ class OptCoordinates(ValueArray, ABC):
 
         return new_coords
 
-    def __sub__(self, other: np.ndarray):
-        """
-        Inplace subtraction of another set of coordinates. Clears the current
-        gradient vector and Hessian matrix.
-
-        Arguments:
-            other (np.ndarray): Array to subtract from the coordinates
-
-        Returns:
-            (autode.opt.coordinates.OptCoordinates): Shifted coordinates
-        """
+    def __sub__(self, other: Union[np.ndarray, float]):
         return self.__add__(-other)
 
     def __rsub__(self, other):

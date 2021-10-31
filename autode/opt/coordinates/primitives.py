@@ -57,18 +57,13 @@ class InverseDistance(Primitive):
         k = {'x': 0, 'y': 1, 'z': 2}[component]
 
         if i != self.idx_i and i != self.idx_j:
-            # Atom does not form part of this distance
-            return 0
+            return 0                 # Atom does not form part of this distance
 
-        value = self(x)
+        elif i == self.idx_i:
+            return - (_x[i, k] - _x[self.idx_j, k]) * self(x)**3
 
-        if i == self.idx_i:
-            return - (_x[i, k] - _x[self.idx_j, k]) * value ** 3
-
-        if i == self.idx_j:
-            return (_x[self.idx_i, k] - _x[self.idx_j, k]) * value ** 3
-
-        return 0
+        else:  # i == self.idx_j:
+            return (_x[self.idx_i, k] - _x[self.idx_j, k]) * self(x)**3
 
     def __call__(self, x):
         """1 / |x_i - x_j| """

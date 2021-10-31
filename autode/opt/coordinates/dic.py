@@ -111,23 +111,7 @@ class DIC(InternalCoordinates):
 
         raise ValueError(f'Unknown conversion to {value}')
 
-    def _new_s_from_kwargs(self, kwargs):
-        """Determine a new set of DICs from some keyword arguments"""
-
-        if 'new' in kwargs:
-            if kwargs['new'].shape != self.shape:
-                raise ValueError('To update the internal coordinates a new '
-                                 f'set with shape {self.shape} is needed, but '
-                                 f'had {kwargs["new"].shape}')
-            return kwargs['new']
-
-        elif 'delta' in kwargs:
-            return np.array(self, copy=True) + kwargs['delta']
-        else:
-            raise ValueError('Expecting one of: *new* or *delta* as keyword '
-                             f'arguments. Had only {kwargs}')
-
-    def update(self, *args, **kwargs) -> None:
+    def update(self, delta) -> None:
         """
         Set some new internal coordinates and update the Cartesian coordinates
 
@@ -137,9 +121,8 @@ class DIC(InternalCoordinates):
 
         for an iteration k.
 
+        ----------------------------------------------------------------------
         Keyword Arguments:
-            new (np.ndarray): New internal coordinates, must be the same shape
-                              as the current coordinates
 
             delta (int | float | np.ndarray): Difference between the current
                                               and new DICs. Must be
@@ -148,7 +131,7 @@ class DIC(InternalCoordinates):
             (RuntimeError): If the transformation diverges
         """
         start_time = time()
-        s_new = self._new_s_from_kwargs(kwargs)
+        s_new = np.array(self, copy=True) + delta
 
         # Initialise
         s_k, x_k = np.array(self, copy=True), self._x.copy()
@@ -183,7 +166,7 @@ class DIC(InternalCoordinates):
         self._x.clear_tensors()
         return None
 
-    def iadd(self, value: np.ndarray) -> 'OptCoordinates':
+    def iadd(self, value: np.ndarray) -> 'autode.opt.OptCoordinates':
         """Inplace addition of another set of coordinates"""
         self.update(delta=value)
         return self
