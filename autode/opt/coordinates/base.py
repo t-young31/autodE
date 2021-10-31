@@ -64,7 +64,7 @@ class OptCoordinates(ValueArray, ABC):
     @h.setter
     def h(self, value: np.ndarray):
         """Set the second derivatives of the energy"""
-        if not value.ndim == 2 and value.shape[0] == value.shape[1]:
+        if not self.h_or_h_inv_has_correct_shape(value):
             raise ValueError(f'Hessian must be an NxN matrix. Had: {value}')
 
         self._h = value
@@ -83,11 +83,15 @@ class OptCoordinates(ValueArray, ABC):
     @h_inv.setter
     def h_inv(self, value: np.ndarray):
         """Set the inverse hessian matrix"""
-        if not value.ndim == 2 and value.shape[0] == value.shape[1]:
+        if not self.h_or_h_inv_has_correct_shape(value):
             raise ValueError('Inverse Hessian must be an NxN matrix. '
                              f'Had: {value}')
 
         self._h_inv = value
+
+    def h_or_h_inv_has_correct_shape(self, arr: np.ndarray):
+        """Does a Hessian or it's inverse have the correct shape?"""
+        return arr.ndim == 2 and arr.shape[0] == arr.shape[1] == len(self)
 
     @abstractmethod
     def to(self, *args, **kwargs):
