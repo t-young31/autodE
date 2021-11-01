@@ -27,7 +27,8 @@ class BFGSOptimiser(NDOptimiser, ABC):
 
         See Also:
 
-            :py:meth:`NDOptimiser <autode.opt.optimisers.NDOptimiser.__init__>`
+            :py:meth:`NDOptimiser
+                      <autode.opt.optimisers.base.NDOptimiser.__init__>`
         """
         super().__init__(maxiter=maxiter, gtol=gtol, etol=etol, **kwargs)
 
@@ -36,26 +37,26 @@ class BFGSOptimiser(NDOptimiser, ABC):
 
     def _step(self) -> None:
         r"""
-        Perform a BFGS step by for each iteration (k). Requires an initial
-        guess of the Hessian matrix i.e. (self._coords.h must be defined).
-        Steps follow:
+        Perform a BFGS step. Requires an initial guess of the Hessian matrix
+        i.e. (self._coords.h must be defined). Steps follow:
 
-        1. Determine the inverse Hessian
+        1. Determine the inverse Hessian:
+
+            :py:meth:`NDOptimiser <autode.opt.optimisers.bfgs._update_h_inv>`
 
 
-
-        1. Solving
+        2. Determine the search direction with:
 
         .. math::
 
-            H_k \boldsymbol{p}_k = - \nabla E
+             \boldsymbol{p}_k = - H_k^{-1} \nabla E
 
         where H is the Hessian matrix, p is the search direction and
         :math:`\nabla E` is the gradient of the energy with respect to the
         coordinates. On the first iteration :math:`H_0` is either the true
         or exact Hessian.
 
-        2. Performing a (in)exact line search to obtain a suitable step size
+        3. Performing a (in)exact line search to obtain a suitable step size
 
         .. math::
 
@@ -63,7 +64,6 @@ class BFGSOptimiser(NDOptimiser, ABC):
 
         and setting :math:`s_k = \alpha \boldsymbol{p}_k`, and updating the
         positions accordingly (:math:`X_{k+1} = X_{k} + s_k`)
-
         """
         self._update_h_inv()
 
