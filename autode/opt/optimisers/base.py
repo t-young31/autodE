@@ -233,6 +233,11 @@ class Optimiser(ABC):
         Iteration   |∆E| / kcal mol-1    ||∇E|| / Ha Å-1
         """
 
+    @property
+    def _has_coordinates_and_gradient(self) -> bool:
+        """Does this optimiser have defined coordinates and a gradient?"""
+        return self._coords is not None and self._coords.g is not None
+
 
 class NDOptimiser(Optimiser):
     """Abstract base class for an optimiser in N-dimensions"""
@@ -425,3 +430,23 @@ class _OptimiserHistory(list):
                              f'coordinates, only had {len(self)}')
 
         return self[-2]
+
+    @property
+    def contains_well(self) -> bool:
+        r"""Does this history contain a well in the energy?::
+
+          |
+        E |    -----   /          <-- Does contain a well
+          |         \/
+          |_________________
+               Iteration
+
+        -----------------------------------------------------------------------
+        Returns:
+            (bool): Presence of an explicit minima
+        """
+        for idx in range(len(self)-1):
+            if self[idx].e < self[idx+1].e:
+                return True
+
+        return False

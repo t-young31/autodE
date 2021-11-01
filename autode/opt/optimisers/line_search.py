@@ -84,7 +84,7 @@ class LineSearchOptimiser(Optimiser, ABC):
         return None
 
     @property
-    def _init_coords(self) -> Optional['autode.opt.OptCoordinates']:
+    def _init_coords(self) -> Optional['autode.opt.coordinates.base.OptCoordinates']:
         """
         Initial coordinates from which this line search was initialised from
 
@@ -146,9 +146,16 @@ class ArmijoLineSearch(LineSearchOptimiser):
         return None
 
     @property
+    def _satisfies_wolfe1(self) -> bool:
+        """First Wolfe condition: """
+
+        term_2 = self.alpha * self.beta * np.dot(self._init_coords.g, self.p)
+        return self._coords.e < self._init_coords.e + term_2
+
+    @property
     def converged(self) -> bool:
         r"""
-        Is the line search converged? Defined by the Armijo condition
+        Is the line search converged? Defined by the Wolfe condition
 
         .. math::
 
@@ -156,18 +163,42 @@ class ArmijoLineSearch(LineSearchOptimiser):
 
         where α is the step size at the current iteration (denoted by l) and
         β is a variable parameter. The search direction p, gradient are defined
-        for the initial point only.
+        for the initial point only. See:
+        https://en.wikipedia.org/wiki/Wolfe_conditions
 
+        -----------------------------------------------------------------------
         Returns:
             (bool): If the search is converged
         """
-        if self._init_coords is None or self._init_coords.g is None:
-            logger.warning('No convergence without defined coordinates '
-                           'or gradients')
+        return self._has_coordinates_and_gradient and self._satisfies_wolfe1
+
+
+class SArmijoLineSearch(ArmijoLineSearch):
+
+    @property
+    def converged(self) -> bool:
+
+        if self.iteration == 0:
             return False
 
-        term_2 = self.alpha * self.beta * np.dot(self._init_coords.g, self.p)
-        return self._coords.e < self._init_coords.e + term_2
+        if not self._history.contains_well:
+            logger.warning(f'Line search has not reached a well yet, {self.alpha:.4f}')
+            return False
+
+        return self._has_coordinates_and_gradient and self._satisfies_wolfe1
+
+    def _step(self) -> None:
+        """Take a step in the line search"""
+
+        if not self._history.contains_well:
+            self.tau = max(self.tau, 1/self.tau)
+        else:
+            self.tau = min(self.tau, 1 / self.tau)
+
+        self.alpha *= self.tau
+        self._coords = self._init_coords + self.alpha * self.p
+
+        return None
 
 
 class NullLineSearch(LineSearchOptimiser):

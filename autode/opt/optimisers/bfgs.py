@@ -13,7 +13,7 @@ class BFGSOptimiser(NDOptimiser, ABC):
                  maxiter:          int,
                  gtol:             'autode.values.GradientNorm',
                  etol:             'autode.values.PotentialEnergy',
-                 step_size:        float = 0.2,
+                 init_alpha:       float = 1.0,
                  line_search_type: Type[LineSearchOptimiser] = ArmijoLineSearch,
                  **kwargs):
         """
@@ -22,7 +22,7 @@ class BFGSOptimiser(NDOptimiser, ABC):
 
         ----------------------------------------------------------------------
         Arguments:
-            step_size (float): Length of the initial step to take in the line
+            init_alpha (float): Length of the initial step to take in the line
                                search. Units of distance
 
         See Also:
@@ -32,7 +32,7 @@ class BFGSOptimiser(NDOptimiser, ABC):
         super().__init__(maxiter=maxiter, gtol=gtol, etol=etol, **kwargs)
 
         self._line_search_type = line_search_type
-        self._init_alpha = step_size
+        self._alpha = init_alpha
 
     def _step(self) -> None:
         r"""
@@ -69,14 +69,12 @@ class BFGSOptimiser(NDOptimiser, ABC):
 
         logger.info('Performing a line search')
         ls = self._line_search_type(direction=p,
-                                    init_alpha=self._init_alpha,
+                                    init_alpha=self._alpha,
                                     coords=self._coords.copy())
 
-        ls.run(self._species, self._method,
-               n_cores=self._n_cores)
+        ls.run(self._species, self._method, n_cores=self._n_cores)
 
         self._coords = self._coords + ls.alpha * p
-
         return None
 
     def _update_h_inv(self) -> None:
@@ -88,7 +86,6 @@ class BFGSOptimiser(NDOptimiser, ABC):
 
         if self.iteration == 0:
             logger.info('First iteration so using exact inverse, H^-1')
-            self._coords.h_inv = np.linalg.inv(self._coords.h)
             return
 
         coords_l, coords_k = self._coords, self._history.penultimate
@@ -133,14 +130,16 @@ class BFGSOptimiser(NDOptimiser, ABC):
 
               y_k (np.ndarray): Gradient shift. shape = (N, )
         """
+        logger.info('Updating H^(-1) with Sherman–Morrison formula')
 
-        s_y, s_s = np.dot(s_k, y_k), np.outer(s_k, s_k)
-        y_h_inv_y = np.linalg.multi_dot((y_k.T, h_inv_k, y_k))
-        h_inv_y_s = np.outer(np.matmul(h_inv_k, y_k), s_k)
-        s_y_h_inv = np.outer(s_k, np.matmul(y_k.T, h_inv_k))
+        s_y = np.dot(s_k, y_k)
+        y_h_inv_y = np.dot(y_k, np.matmul(h_inv_k, y_k))
+        s_s = np.outer(s_k, s_k)
+        h_inv_y_s = np.matmul(h_inv_k, np.outer(y_k, s_k))
+        s_y_h_inv = np.outer(s_k, np.matmul(y_k, h_inv_k))
 
         h_inv_l = (h_inv_k
-                   + (s_y + y_h_inv_y) * s_s / (s_y ** 2)
-                   - (h_inv_y_s + s_y_h_inv) / s_y)
+                   + (s_y + y_h_inv_y)/(s_y**2) * s_s
+                   - (h_inv_y_s + s_y_h_inv)/ s_y)
 
         return h_inv_l

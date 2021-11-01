@@ -1,6 +1,7 @@
 import numpy as np
 from typing import Optional, Union
 from abc import ABC, abstractmethod
+from autode.log import logger
 from autode.units import (ang, nm, pm, m)
 from autode.values import ValueArray, PotentialEnergy
 
@@ -59,6 +60,11 @@ class OptCoordinates(ValueArray, ABC):
     @property
     def h(self) -> Optional[np.ndarray]:
         """Second derivatives of the energy: {d^2E/dx_idx_j^2}"""
+
+        if self._h is None and self._h_inv is not None:
+            logger.info('Have H^-1 but no H, calculating H')
+            self._h = np.linalg.inv(self._h_inv)
+
         return self._h
 
     @h.setter
@@ -78,6 +84,12 @@ class OptCoordinates(ValueArray, ABC):
         Returns:
             (np.ndarray | None): :math:`H^{-1}`
         """
+
+        if self._h_inv is None and self._h is not None:
+            logger.info('Have Hessian but no inverse, so calculating '
+                        'explicit inverse')
+            self._h_inv = np.linalg.inv(self._h)
+
         return self._h_inv
 
     @h_inv.setter
@@ -90,7 +102,7 @@ class OptCoordinates(ValueArray, ABC):
         self._h_inv = value
 
     def h_or_h_inv_has_correct_shape(self, arr: np.ndarray):
-        """Does a Hessian or it's inverse have the correct shape?"""
+        """Does a Hessian or its inverse have the correct shape?"""
         return arr.ndim == 2 and arr.shape[0] == arr.shape[1] == len(self)
 
     @abstractmethod
