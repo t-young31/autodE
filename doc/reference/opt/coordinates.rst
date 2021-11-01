@@ -2,21 +2,21 @@
 Coordinates
 ***********
 
-.. automodule:: autode.opt.coordinates
+.. automodule:: autode.opt.coordinates.base
    :members:
    :undoc-members:
    :special-members: __init__
 
 ----------
 
-.. automodule:: autode.opt.cartesian
+.. automodule:: autode.opt.coordinates.cartesian
    :members:
    :undoc-members:
    :special-members: __init__
 
 ----------
 
-.. automodule:: autode.opt.dic
+.. automodule:: autode.opt.coordinates.dic
    :members:
    :undoc-members:
    :special-members: __init__

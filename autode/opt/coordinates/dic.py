@@ -7,12 +7,13 @@ and references cited therein. Also used is
 The notation follows the paper and is briefly
 summarised below:
 
-x : Cartesian coordinates
-B : Wilson B matrix
-G : 'Spectroscopic G matrix'
-q : Redundant internal coordinates
-s : Non-redundant internal coordinates
-U : Transformation matrix q -> s
+| x : Cartesian coordinates
+| B : Wilson B matrix
+| G : 'Spectroscopic G matrix'
+| q : Redundant internal coordinates
+| s : Non-redundant internal coordinates
+| U : Transformation matrix q -> s
+|
 """
 import numpy as np
 from time import time
@@ -31,9 +32,25 @@ class DIC(InternalCoordinates):
 
     @staticmethod
     def U(primitives: PIC) -> np.ndarray:
-        """
-        Transform matrix
+        r"""
+        Transform matrix containing the non-redundant eigenvectors of the G
+        matrix.
 
+        .. math::
+
+            G (U R) = (U R) \begin{pmatrix}
+            \Lambda & 0 \\
+            0 & 0
+            \end{pmatrix}
+
+        where
+
+        .. math::
+
+            G = B B^{T}
+
+
+        -----------------------------------------------------------------------
         Arguments:
             primitives (autode.opt.internals.PIC):
 
@@ -53,20 +70,22 @@ class DIC(InternalCoordinates):
     @classmethod
     def from_cartesian(cls,
                        x:             'autode.opt.cartesian.CartesianCoordinates',
-                       primitive_type: Type[PIC] = InverseDistances):
+                       primitive_type: Type[PIC] = InverseDistances
+                       ) -> 'autode.opt.coordinates.dic.DIC':
         """
         Convert cartesian coordinates to primitives then to delocalised
         internal coordinates (DICs), of which there should be 3N-6 for a
         polyatomic system with N atoms
 
+        -----------------------------------------------------------------------
         Arguments:
-            x (autode.opt.cartesian.CartesianCoordinates): Cartesian coordinates
+            x (autode.opt.CartesianCoordinates): Cartesian coordinates
 
             primitive_type (autode.opt.internals.PIC): Primitive internal
                            coordinates, constructable from Cartesian
 
         Returns:
-            (autode.opt.cartesian.CartesianCoordinates):
+            (autode.opt.coordinates.DIC): Delocalised internal coordinates
         """
         logger.info('Converting cartesian coordinates to DIC')
         start_time = time()
@@ -95,12 +114,13 @@ class DIC(InternalCoordinates):
         logger.info(f'Transformed in      ...{time() - start_time:.4f} s')
         return s
 
-    def to(self, value: str) -> 'autode.opt.coordinates.OptCoordinates':
+    def to(self, value: str) -> 'autode.opt.coordinates.base.OptCoordinates':
         """
         Convert these DICs to another type of coordinate
 
+        -----------------------------------------------------------------------
         Arguments:
-            value (str):
+            value (str): e.g. "Cartesian"
 
         Returns:
             (autode.opt.coordinates.OptCoordinates): Coordinates
@@ -166,7 +186,8 @@ class DIC(InternalCoordinates):
         self._x.clear_tensors()
         return None
 
-    def iadd(self, value: np.ndarray) -> 'autode.opt.OptCoordinates':
+    def iadd(self,
+             value: np.ndarray) -> 'autode.opt.coordidnates.base.OptCoordinates':
         """Inplace addition of another set of coordinates"""
         self.update(delta=value)
         return self

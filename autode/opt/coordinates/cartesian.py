@@ -37,7 +37,7 @@ class CartesianCoordinates(OptCoordinates):
             value (str): Intended conversion
 
         Returns:
-            (autode.opt.coordinates.OptCoordinates):
+            (autode.opt.coordinates.OptCoordinates): Transformed coordinates
 
         Raises:
             (ValueError): If the conversion cannot be performed

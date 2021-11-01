@@ -2,7 +2,7 @@
 Optimisers
 ***********
 
-.. automodule:: autode.opt.optimisers
+.. automodule:: autode.opt.optimisers.base
    :members:
    :undoc-members:
    :special-members: __init__
@@ -14,7 +14,7 @@ Optimisers
 
 |
 
-.. automodule:: autode.opt.steepest_decent
+.. automodule:: autode.opt.optimisers.steepest_decent
    :members:
    :undoc-members:
    :special-members: __init__
@@ -26,7 +26,7 @@ Optimisers
 
 |
 
-.. automodule:: autode.opt.bfgs
+.. automodule:: autode.opt.optimisers.bfgs
    :members:
    :undoc-members:
    :special-members: __init__
@@ -38,7 +38,7 @@ Optimisers
 
 |
 
-.. automodule:: autode.opt.line_search
+.. automodule:: autode.opt.optimisers.line_search
    :members:
    :undoc-members:
    :special-members: __init__

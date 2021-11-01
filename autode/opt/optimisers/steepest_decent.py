@@ -15,7 +15,7 @@ class SteepestDecent(NDOptimiser, ABC):
 
         See Also:
 
-            :py:meth:`NDOptimiser <autode.opt.optimisers.NDOptimiser.__init__>`
+            :py:meth:`NDOptimiser <autode.opt.optimisers.base.NDOptimiser.__init__>`
         """
         super().__init__(maxiter=maxiter, gtol=gtol, etol=etol, **kwargs)
 

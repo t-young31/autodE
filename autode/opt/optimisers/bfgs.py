@@ -27,8 +27,7 @@ class BFGSOptimiser(NDOptimiser, ABC):
 
         See Also:
 
-            :py:meth:`NDOptimiser
-                      <autode.opt.optimisers.base.NDOptimiser.__init__>`
+            :py:meth:`NDOptimiser <autode.opt.optimisers.base.NDOptimiser.__init__>`
         """
         super().__init__(maxiter=maxiter, gtol=gtol, etol=etol, **kwargs)
 
@@ -42,8 +41,7 @@ class BFGSOptimiser(NDOptimiser, ABC):
 
         1. Determine the inverse Hessian:
 
-            :py:meth:`NDOptimiser <autode.opt.optimisers.bfgs._update_h_inv>`
-
+        :py:meth:`h_inv <autode.opt.optimisers.bfgs.BFGSOptimiser._update_h_inv>`
 
         2. Determine the search direction with:
 
