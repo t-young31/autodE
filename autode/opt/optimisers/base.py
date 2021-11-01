@@ -228,7 +228,6 @@ class Optimiser(ABC):
     def converged(self) -> bool:
         """Has this optimisation converged"""
 
-    @abstractmethod
     def _log_convergence(self) -> None:
         """Log the iterations in the form:
         Iteration   |∆E| / kcal mol-1    ||∇E|| / Ha Å-1
