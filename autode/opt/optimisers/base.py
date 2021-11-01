@@ -121,6 +121,7 @@ class Optimiser(ABC):
         """Initialise the internal species and method. They must have the
          correct attributes
 
+        -----------------------------------------------------------------------
          Raises:
              (ValueError): For incorrect type or attributes
          """
@@ -144,6 +145,7 @@ class Optimiser(ABC):
         using the method. Will transform from the current coordinates type
         to Cartesian coordinates to perform the calculation, then back.
 
+        -----------------------------------------------------------------------
         Raises:
             (autode.exceptions.CalculationException):
         """
@@ -268,6 +270,7 @@ class NDOptimiser(Optimiser):
         """
         Gradient tolerance on |∇E| i.e. the root mean square of each component
 
+        -----------------------------------------------------------------------
         Returns:
             (autode.values.GradientNorm):
         """
@@ -288,6 +291,7 @@ class NDOptimiser(Optimiser):
         """
         Energy tolerance between two consecutive steps of the optimisation
 
+        -----------------------------------------------------------------------
         Returns:
             (autode.values.PotentialEnergy): Energy tolerance
         """
@@ -334,9 +338,7 @@ class NDOptimiser(Optimiser):
             kwargs (Any): Additional keyword arguments to pass on
         """
 
-        optimiser = cls(maxiter=maxiter, gtol=gtol, etol=etol)
-        optimiser._coords = coords
-
+        optimiser = cls(maxiter=maxiter, gtol=gtol, etol=etol, coords=coords)
         optimiser.run(species, method, n_cores=n_cores)
 
         return None
@@ -347,6 +349,7 @@ class NDOptimiser(Optimiser):
         Is this optimisation converged? Must be converged based on both energy
         and gradient tolerance.
 
+        -----------------------------------------------------------------------
         Returns:
             (bool): Converged?
         """
@@ -360,6 +363,7 @@ class NDOptimiser(Optimiser):
         .. math::
             |∆E| = |E_i - E_{i-1}|   for a step i
 
+        -----------------------------------------------------------------------
         Returns:
             (autode.values.PotentialEnergy): Energy difference. Infinity if
                                   an energy difference cannot be calculated
@@ -382,6 +386,7 @@ class NDOptimiser(Optimiser):
         """
         Calculate ||∇E|| based on the current Cartesian gradient.
 
+        -----------------------------------------------------------------------
         Returns:
             (autode.values.GradientNorm): Gradient norm. Infinity if the
                                           gradient is not defined
