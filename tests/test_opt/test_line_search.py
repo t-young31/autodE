@@ -6,7 +6,7 @@ from autode.utils import work_in_tmp_dir
 from autode.wrappers.base import Method
 from autode.methods import XTB
 from autode.opt.coordinates.cartesian import CartesianCoordinates
-from autode.opt.optimisers.line_search import ArmijoLineSearch
+from autode.opt.optimisers.line_search import ArmijoLineSearch, NullLineSearch
 from .optimiers import TestSDLineSearch
 
 
@@ -32,6 +32,18 @@ class TestArmijoLineSearch(ArmijoLineSearch):
 
     def _log_convergence(self) -> None:
         pass  # print(self._e_prev, self._species.energy)
+
+
+def test_null_line_search():
+
+    ls = NullLineSearch(init_alpha=0.1)
+    assert ls.converged
+
+    # Dummy (empty) coordinates should be initialisable without a species
+    assert ls._initialise_coordinates() is None
+
+    ls.run(Molecule(name='blank'), Method())
+    assert np.isclose(ls.alpha, 0.1)
 
 
 def test_simple_line_search():

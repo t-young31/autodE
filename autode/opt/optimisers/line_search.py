@@ -169,5 +169,25 @@ class ArmijoLineSearch(LineSearchOptimiser):
         term_2 = self.alpha * self.beta * np.dot(self._init_coords.g, self.p)
         return self._coords.e < self._init_coords.e + term_2
 
-    def _log_convergence(self) -> None:
-        pass
+
+class NullLineSearch(LineSearchOptimiser):
+    r"""A line search that does not perform a line search
+
+    .. math::
+
+        \alpha = \alpha_\text{init}
+    """
+
+    def _initialise_coordinates(self) -> None:
+        """No coordinates to initialise in a null line search"""
+
+    def _initialise_run(self) -> None:
+        """Nothing required to initialise a null line search"""
+
+    def _step(self) -> None:
+        """No step required in a null line search"""
+
+    @property
+    def converged(self) -> bool:
+        """A null line search is converged on the first iteration"""
+        return True

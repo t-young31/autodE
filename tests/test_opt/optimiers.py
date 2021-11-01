@@ -16,18 +16,7 @@ def quadratic(x, y):
 
 class TestBFGSOptimiser(BFGSOptimiser):
     """Simple 2D optimiser using a BFGS update step, where the objective
-    function is::
-
-        E = x^2 + y^2 + xy/10
-
-    so
-
-        ∇E  = (2x + 0.1y, 2y + 0.1x)
-
-    and
-            (  2   0.1  )
-        H = (
-            (  0.1   2  )
+    function is:  E = x^2 + y^2
     """
 
     __test__ = False
@@ -36,13 +25,12 @@ class TestBFGSOptimiser(BFGSOptimiser):
         super().__init__(maxiter=maxiter, line_search_type=TestSDLineSearch,
                          etol=etol, gtol=gtol, step_size=0.1, coords=coords)
 
-    def _log_convergence(self) -> None:
-        print(self._coords.e)
+    # def _log_convergence(self) -> None:
+    #     print(self._coords.e)
 
     def _update_gradient_and_energy(self) -> None:
 
         x, y = self._coords
-
         self._coords.e, self._coords.g = quadratic(x, y)[:2]
 
     def _initialise_run(self) -> None:

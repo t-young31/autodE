@@ -1,6 +1,6 @@
 import numpy as np
 from abc import ABC
-from typing import Type
+from typing import Type, Optional
 from autode.log import logger
 from autode.opt.optimisers.base import NDOptimiser
 from autode.opt.optimisers.line_search import (LineSearchOptimiser,
@@ -67,6 +67,7 @@ class BFGSOptimiser(NDOptimiser, ABC):
 
         p = np.matmul(self._coords.h_inv, -self._coords.g)
 
+        logger.info('Performing a line search')
         ls = self._line_search_type(direction=p,
                                     init_alpha=self._init_alpha,
                                     coords=self._coords.copy())
@@ -79,10 +80,39 @@ class BFGSOptimiser(NDOptimiser, ABC):
         return None
 
     def _update_h_inv(self) -> None:
-        r"""
+        """
         Update the inverse of the Hessian matrix :math:`H^{-1}` for the
         current set of coordinates. If the first iteration then use the true
-        inverse of the (estimated) Hessian, otherwise update the inverse using:
+        inverse of the (estimated) Hessian, otherwise update the inverse
+        """
+
+        if self.iteration == 0:
+            logger.info('First iteration so using exact inverse, H^-1')
+            self._coords.h_inv = np.linalg.inv(self._coords.h)
+            return
+
+        coords_l, coords_k = self._coords, self._history.penultimate
+
+        y_k = (coords_l.g - coords_k.g)
+        s_k = (coords_l - coords_k)
+        h_inv_k = coords_k.h_inv
+
+        if np.linalg.norm(s_k) < 1E-10:
+            logger.warning('No update needed - little shift to coordinates:'
+                           f'|x_k - x_k-1| = {np.linalg.norm(s_k)}')
+            return
+
+        if np.dot(y_k, s_k) < 0:
+            logger.warning('Secant condition not satisfied. Skipping H update')
+            coords_l.h_inv = h_inv_k
+            return
+
+        coords_l.h_inv = self._sherman_morrison_h_inv(h_inv_k, s_k, y_k)
+        return None
+
+    def _sherman_morrison_h_inv(self, h_inv_k, s_k, y_k):
+        r"""
+        Sherman–Morrison inverse matrix update
 
         .. math::
 
@@ -94,26 +124,23 @@ class BFGSOptimiser(NDOptimiser, ABC):
 
         where :math:`k = l - 1,\; s_k = x_l - x_k,\; \boldsymbol{y}_l =
         \nabla E_l - \nabla E_k`.
+
+        ----------------------------------------------------------------------
+        Arguments:
+              h_inv_k (np.ndarray): Inverse Hessian shape = (N, N)
+
+              s_k (np.ndarray): Coordinate shift. shape = (N,)
+
+              y_k (np.ndarray): Gradient shift. shape = (N, )
         """
 
-        if self.iteration == 0:
-            logger.info('First iteration so using exact inverse, H^-1')
-            self._coords.h_inv = np.linalg.inv(self._coords.h)
-            return
-
-        coords_l, coords_k = self._coords, self._history.penultimate
-
-        h_inv_k = coords_k.h_inv
-        s_k = coords_l - coords_k
-        y_k = coords_l.g - coords_k.g
-
-        s_y, s_s = np.dot(s_k.T, y_k), np.outer(s_k, s_k.T)
+        s_y, s_s = np.dot(s_k, y_k), np.outer(s_k, s_k)
         y_h_inv_y = np.linalg.multi_dot((y_k.T, h_inv_k, y_k))
-        h_inv_y_s = np.outer(np.matmul(h_inv_k, y_k), s_k.T)
+        h_inv_y_s = np.outer(np.matmul(h_inv_k, y_k), s_k)
         s_y_h_inv = np.outer(s_k, np.matmul(y_k.T, h_inv_k))
 
-        coords_l.h_inv = (h_inv_k
-                          + (s_y + y_h_inv_y)*s_s/(s_y**2)
-                          - (h_inv_y_s + s_y_h_inv) / s_y)
+        h_inv_l = (h_inv_k
+                   + (s_y + y_h_inv_y) * s_s / (s_y ** 2)
+                   - (h_inv_y_s + s_y_h_inv) / s_y)
 
-        return None
+        return h_inv_l
