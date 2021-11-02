@@ -84,6 +84,11 @@ class LineSearchOptimiser(Optimiser, ABC):
         return None
 
     @property
+    def minimum_e_coords(self) -> Optional['autode.opt.coordinates.base.OptCoordinates']:
+        """Minimum energy coordinates"""
+        return None if len(self._history) == 0 else self._history.minimum
+
+    @property
     def _init_coords(self) -> Optional['autode.opt.coordinates.base.OptCoordinates']:
         """
         Initial coordinates from which this line search was initialised from
@@ -168,36 +173,53 @@ class ArmijoLineSearch(LineSearchOptimiser):
 
         -----------------------------------------------------------------------
         Returns:
-            (bool): If the search is converged
+            (bool): Line search converged?
         """
         return self._has_coordinates_and_gradient and self._satisfies_wolfe1
 
 
 class SArmijoLineSearch(ArmijoLineSearch):
+    """Speculative Armijo line search"""
 
     @property
     def converged(self) -> bool:
+        """Is the line search converged? For the speculative search to be
+        converged requires at least one iteration, there to be a well in the
+        search and that the Wolfe condition is satisfied.
+
+        -----------------------------------------------------------------------
+        Returns:
+            (bool): Line search converged?
+        """
 
         if self.iteration == 0:
             return False
 
         if not self._history.contains_well:
-            logger.warning(f'Line search has not reached a well yet, {self.alpha:.4f}')
+            logger.warning(f'Line search has not reached a well yet, '
+                           f'{self.alpha:.4f}')
             return False
 
         return self._has_coordinates_and_gradient and self._satisfies_wolfe1
 
     def _step(self) -> None:
-        """Take a step in the line search"""
+        r"""
+        Take a step in the speculative line search. If the energy is monotonic
+        decreasing in the search then take steps that of the form
 
-        if not self._history.contains_well:
-            self.tau = max(self.tau, 1/self.tau)
-        else:
-            self.tau = min(self.tau, 1 / self.tau)
+        .. math::
 
+            \alpha = \tau \alpha_\text{init}
+
+        where :math:`\tau > 1`. But as soon as the energy rises then switch to
+        :math:`\tau_{k+1} = 1/\tau_{k}`
+        """
+        func = min if self._history.contains_well else max
+
+        self.tau = func(self.tau, 1 / self.tau)
         self.alpha *= self.tau
-        self._coords = self._init_coords + self.alpha * self.p
 
+        self._coords = self._init_coords + self.alpha * self.p
         return None
 
 
@@ -217,6 +239,17 @@ class NullLineSearch(LineSearchOptimiser):
 
     def _step(self) -> None:
         """No step required in a null line search"""
+
+    @property
+    def minimum_e_coords(self) -> Optional['autode.opt.coordinates.base.OptCoordinates']:
+        """
+        Minimum energy coordinates are defined to be the true step
+
+        -----------------------------------------------------------------------
+        Returns:
+            (autode.opt.coordinates.base.OptCoordinates): Coordinates
+        """
+        return self._init_coords + self.alpha * self.p
 
     @property
     def converged(self) -> bool:
