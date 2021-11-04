@@ -12,9 +12,9 @@ class HessianUpdater(ABC):
 
         ----------------------------------------------------------------------
         Keyword Arguments:
-            h (np.ndarray): Hessian, shape = (N, N)
+            h (np.ndarray): Hessian (:math:`H`), shape = (N, N)
 
-            h_inv (np.ndarray): Inverse Hessian, shape = (N, N)
+            h_inv (np.ndarray): Inverse Hessian (:math:`H^{-1}`), shape = (N, N)
 
             s (np.ndarray): Coordinate shift. :math:`s = X_{i+1} - X_i`
 
@@ -85,7 +85,22 @@ class BFGSUpdate(HessianUpdater):
 
     @property
     def _updated_h(self) -> np.ndarray:
-        raise NotImplementedError
+        """
+        Update the Hessian with a BFGS like update
+
+        .. math::
+
+            H_{new} = H + \frac{y y^T}{y^T s} - \frac{H s s^T H}
+                                                     {s^T H s}
+        """
+        h_s = np.matmul(self.h, self.s)
+
+        h_new = (self.h
+                 + np.outer(self.y, self.y)/np.dot(self.y, self.s)
+                 - (np.outer(h_s, np.matmul(self.s.T, self.h))
+                    / np.dot(self.s, h_s)))
+
+        return h_new
 
     @property
     def _updated_h_inv(self):
