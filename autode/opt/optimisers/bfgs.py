@@ -1,8 +1,9 @@
 import numpy as np
 from abc import ABC
-from typing import Type, Optional
+from typing import Type
 from autode.log import logger
 from autode.opt.optimisers.base import NDOptimiser
+from autode.opt.optimisers.hessian_update import BFGSUpdate, NullUpdate
 from autode.opt.optimisers.line_search import (LineSearchOptimiser,
                                                ArmijoLineSearch)
 
@@ -32,6 +33,7 @@ class BFGSOptimiser(NDOptimiser, ABC):
         super().__init__(maxiter=maxiter, gtol=gtol, etol=etol, **kwargs)
 
         self._line_search_type = line_search_type
+        self._h_update_types = [BFGSUpdate, NullUpdate]
         self._alpha = init_alpha
 
     def _step(self) -> None:
@@ -63,8 +65,7 @@ class BFGSOptimiser(NDOptimiser, ABC):
         and setting :math:`s_k = \alpha \boldsymbol{p}_k`, and updating the
         positions accordingly (:math:`X_{k+1} = X_{k} + s_k`)
         """
-        self._update_h_inv()
-
+        self._coords.h_inv = self._updated_h_inv()
         p = np.matmul(self._coords.h_inv, -self._coords.g)
 
         logger.info('Performing a line search')
@@ -74,72 +75,38 @@ class BFGSOptimiser(NDOptimiser, ABC):
 
         ls.run(self._species, self._method, n_cores=self._n_cores)
 
-        self._coords = self._coords + ls.alpha * p
+        self._coords = ls.minimum_e_coords.copy()
         return None
 
-    def _update_h_inv(self) -> None:
-        """
+    def _updated_h_inv(self) -> np.ndarray:
+        r"""
         Update the inverse of the Hessian matrix :math:`H^{-1}` for the
         current set of coordinates. If the first iteration then use the true
         inverse of the (estimated) Hessian, otherwise update the inverse
+        using a viable update strategy
+
+
+        .. math::
+
+            H_{l - 1} \rightarrow H_{l}
+
         """
 
         if self.iteration == 0:
             logger.info('First iteration so using exact inverse, H^-1')
-            return
+            return np.linalg.inv(self._coords.h)
 
         coords_l, coords_k = self._coords, self._history.penultimate
 
-        y_k = (coords_l.g - coords_k.g)
-        s_k = (coords_l - coords_k)
-        h_inv_k = coords_k.h_inv
+        for update_type in self._h_update_types:
+            updater = update_type(h_inv=coords_k.h_inv,
+                                  s=coords_l - coords_k,
+                                  y=coords_l.g - coords_k.g)
 
-        if np.linalg.norm(s_k) < 1E-10:
-            logger.warning('No update needed - little shift to coordinates:'
-                           f'|x_k - x_k-1| = {np.linalg.norm(s_k)}')
-            return
+            if not updater.conditions_met:
+                continue
 
-        if np.dot(y_k, s_k) < 0:
-            logger.warning('Secant condition not satisfied. Skipping H update')
-            coords_l.h_inv = h_inv_k
-            return
+            return updater.updated_h_inv
 
-        coords_l.h_inv = self._sherman_morrison_h_inv(h_inv_k, s_k, y_k)
-        return None
-
-    def _sherman_morrison_h_inv(self, h_inv_k, s_k, y_k):
-        r"""
-        Sherman–Morrison inverse matrix update
-
-        .. math::
-
-            H_l^{-1} = H_k^{-1} +
-                       \frac{(s_k^Ty_k + y_k^T H_k^{-1} y_k) s_k^T s_k}
-                            {s_k^T y_k} -
-                        \frac{H_k^{-1} y_k s_k^T + s_k y_k^T H_k^{-1}}
-                             {s_k^T y_k}
-
-        where :math:`k = l - 1,\; s_k = x_l - x_k,\; \boldsymbol{y}_l =
-        \nabla E_l - \nabla E_k`.
-
-        ----------------------------------------------------------------------
-        Arguments:
-              h_inv_k (np.ndarray): Inverse Hessian shape = (N, N)
-
-              s_k (np.ndarray): Coordinate shift. shape = (N,)
-
-              y_k (np.ndarray): Gradient shift. shape = (N, )
-        """
-        logger.info('Updating H^(-1) with Sherman–Morrison formula')
-
-        s_y = np.dot(s_k, y_k)
-        y_h_inv_y = np.dot(y_k, np.matmul(h_inv_k, y_k))
-        s_s = np.outer(s_k, s_k)
-        h_inv_y_s = np.matmul(h_inv_k, np.outer(y_k, s_k))
-        s_y_h_inv = np.outer(s_k, np.matmul(y_k, h_inv_k))
-
-        h_inv_l = (h_inv_k
-                   + (s_y + y_h_inv_y)/(s_y**2) * s_s
-                   - (h_inv_y_s + s_y_h_inv)/ s_y)
-
-        return h_inv_l
+        raise RuntimeError('Could not update the inverse Hessian - no '
+                           'suitable update strategies')

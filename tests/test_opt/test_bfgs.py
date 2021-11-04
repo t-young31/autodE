@@ -29,7 +29,10 @@ class TestBFGSOptimiser2D(BFGSOptimiser):
 
     def _log_convergence(self) -> None:
         x, y = self._coords
-        print(f'{x:.4f}, {y:.4f}', f'E = {round(self._coords.e, 5)}, {np.round(self._coords.g, 5)}')
+        print(f'{x:.4f}, {y:.4f}',
+              f'E = {round(self._coords.e, 5)},'
+              # f' {np.round(self._coords.g, 5)}'
+              )
 
     def _update_gradient_and_energy(self) -> None:
 
@@ -81,12 +84,11 @@ def test_inv_hessian_update():
     # Then for the new set of coordinates generate a better guess of the
     # inverse Hessian once the gradient has been updated
     optimiser._update_gradient_and_energy()
-    optimiser._update_h_inv()
 
     h_inv_true = np.array([[0.5, 0.0],
                            [0.0, 0.5]])
 
-    assert (np.linalg.norm(optimiser._coords.h_inv - h_inv_true)
+    assert (np.linalg.norm(optimiser._updated_h_inv() - h_inv_true)
             < np.linalg.norm(np.linalg.inv(init_h) - h_inv_true))
 
     optimiser.run(Molecule(name='blank'), method=Method())
@@ -155,6 +157,7 @@ def check_gaussian_well_opt(init_x, init_y):
 def test_gaussian_well_opt():
 
     for (x, y) in [(-0.1, 0.0), (-1.0, 0.0), (2.0, 1.0), (2.0, -2.0)]:
+    # for (x, y) in [(2.0, -2.0)]:
         check_gaussian_well_opt(init_x=x, init_y=y)
 
 
@@ -173,3 +176,6 @@ def test_complex_2d_opt():
     optimiser.run(Molecule(name='blank'), method=Method())
 
     assert optimiser.converged
+    assert np.allclose(optimiser._coords,      # Minimum is at (1, 1)
+                       np.array([1.0, 1.0]),
+                       atol=0.1)

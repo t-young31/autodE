@@ -432,6 +432,20 @@ class _OptimiserHistory(list):
         return self[-2]
 
     @property
+    def minimum(self) -> OptCoordinates:
+        """
+        Minimum energy coordinates in the history
+
+        -----------------------------------------------------------------------
+        Returns:
+            (autode.opt.OptCoordinates):
+        """
+        if len(self) == 0:
+            raise RuntimeError('No minimum with no history')
+
+        return self[np.argmin([coords.e for coords in self])]
+
+    @property
     def contains_well(self) -> bool:
         r"""Does this history contain a well in the energy?::
 
@@ -445,6 +459,7 @@ class _OptimiserHistory(list):
         Returns:
             (bool): Presence of an explicit minima
         """
+
         for idx in range(len(self)-1):
             if self[idx].e < self[idx+1].e:
                 return True
