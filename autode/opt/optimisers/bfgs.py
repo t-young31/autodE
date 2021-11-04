@@ -3,7 +3,7 @@ from abc import ABC
 from typing import Type
 from autode.log import logger
 from autode.opt.optimisers.base import NDOptimiser
-from autode.opt.optimisers.hessian_update import BFGSUpdate, SR1Update, NullUpdate
+from autode.opt.optimisers.hessian_update import BFGSUpdate, NullUpdate
 from autode.opt.optimisers.line_search import (LineSearchOptimiser,
                                                ArmijoLineSearch)
 
@@ -33,8 +33,7 @@ class BFGSOptimiser(NDOptimiser, ABC):
         super().__init__(maxiter=maxiter, gtol=gtol, etol=etol, **kwargs)
 
         self._line_search_type = line_search_type
-        self._h_update_types = [BFGSUpdate, # SR1Update,
-                                NullUpdate]
+        self._h_update_types = [BFGSUpdate, NullUpdate]
         self._alpha = init_alpha
 
     def _step(self) -> None:
