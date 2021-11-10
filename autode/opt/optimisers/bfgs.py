@@ -41,9 +41,8 @@ class BFGSOptimiser(NDOptimiser, ABC):
         Perform a BFGS step. Requires an initial guess of the Hessian matrix
         i.e. (self._coords.h must be defined). Steps follow:
 
-        1. Determine the inverse Hessian:
-
-        :py:meth:`h_inv <autode.opt.optimisers.bfgs.BFGSOptimiser._update_h_inv>`
+        1. Determine the inverse Hessian: :py:meth:`h_inv <autode.opt.
+        optimisers.hessian_update.HessianUpdater>`
 
         2. Determine the search direction with:
 

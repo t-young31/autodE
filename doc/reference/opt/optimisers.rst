@@ -43,3 +43,16 @@ Optimisers
    :undoc-members:
    :special-members: __init__
    :private-members: _step
+
+
+|
+
+----------
+
+|
+
+.. automodule:: autode.opt.optimisers.trust_region
+   :members:
+   :undoc-members:
+   :special-members: __init__
+
