@@ -121,7 +121,7 @@ class BFGSUpdate(HessianUpdater):
         logger.info('Calculating H^(-1) with Sherman–Morrison formula')
 
         s_y = np.dot(self.s, self.y)
-        y_h_inv_y = np.dot( self.y, np.matmul(self.h_inv,  self.y))
+        y_h_inv_y = np.dot(self.y, np.matmul(self.h_inv,  self.y))
         s_s = np.outer(self.s, self.s)
         h_inv_y_s = np.matmul(self.h_inv, np.outer(self.y, self.s))
         s_y_h_inv = np.outer(self.s, np.matmul(self.y, self.h_inv))

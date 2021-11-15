@@ -55,4 +55,5 @@ Optimisers
    :members:
    :undoc-members:
    :special-members: __init__
+   :private-members: _solve_subproblem
 
