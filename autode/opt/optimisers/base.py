@@ -266,8 +266,8 @@ class NDOptimiser(Optimiser, ABC):
         """
         super().__init__(maxiter=maxiter, coords=coords)
 
-        self._gtol, self._etol = None, None
-        self.gtol, self.etol = gtol, etol
+        self.etol = etol
+        self.gtol = gtol
 
     @property
     def gtol(self) -> GradientNorm:
@@ -430,6 +430,21 @@ class _OptimiserHistory(list):
                              f'coordinates, only had {len(self)}')
 
         return self[-2]
+
+    @property
+    def final(self) -> OptCoordinates:
+        """
+        Last set of coordinates
+
+        -----------------------------------------------------------------------
+        Returns:
+            (autode.opt.OptCoordinates):
+        """
+        if len(self) < 1:
+            raise IndexError('Cannot obtain the final set of coordinates from '
+                             'an empty history')
+
+        return self[-1]
 
     @property
     def minimum(self) -> OptCoordinates:
