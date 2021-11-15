@@ -239,7 +239,7 @@ class Optimiser(ABC):
         return self._coords is not None and self._coords.g is not None
 
 
-class NDOptimiser(Optimiser):
+class NDOptimiser(Optimiser, ABC):
     """Abstract base class for an optimiser in N-dimensions"""
 
     def __init__(self,
