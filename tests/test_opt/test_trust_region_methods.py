@@ -36,14 +36,11 @@ class BraninCauchyTROptimiser(CauchyTROptimiser):
         self._coords.h = np.array([[h_xx, h_xy],
                                    [h_xy, h_yy]])
 
-    @property
-    def rho(self) -> float:
-
-        true_diff = self._coords.e - self.energy(*(self._coords + self.p))
-        e, g, h, p = self._coords.e, self._coords.g, self._coords.h, self.p
-        m = (e + np.dot(g, p) + 0.5 * np.dot(p, np.matmul(h, p)))
-
-        return true_diff / (self._coords.e - m)
+    def _log_convergence(self) -> None:
+        for thing in (self.iteration, self._coords.e, *self._coords, self.rho, self.alpha, np.linalg.norm(self.p), self._g_norm):
+            print(f'{round(thing, 3):10.3f}'
+                  f'', end=' ')
+        print()
 
 
 def test_branin_minimisation():

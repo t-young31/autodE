@@ -85,16 +85,11 @@ class TrustRegionOptimiser(NDOptimiser, ABC):
 
         TODO: Math
         """
+        rho = self.rho
         self._solve_subproblem()
 
         e, g, h, p = self._coords.e, self._coords.g, self._coords.h, self.p
         self.m = (e + np.dot(g, p) + 0.5 * np.dot(p, np.matmul(h, p)))
-
-        rho = self.rho
-        for thing in (self.iteration, self._coords.e, *self._coords, rho, self.alpha, np.linalg.norm(self.p), self._g_norm):
-            print(f'{round(thing, 3):10.3f}'
-                  f'', end=' ')
-        print()
 
         if self.iteration == 0:
             # First iteration, so take a normal step
@@ -152,7 +147,8 @@ class TrustRegionOptimiser(NDOptimiser, ABC):
     @property
     def rho(self) -> float:
         """
-        Calculate ρ, the ratio of the actual and predicted reductions
+        Calculate ρ, the ratio of the actual and predicted reductions for the
+        previous step
 
         -----------------------------------------------------------------------
         Returns:
@@ -164,6 +160,11 @@ class TrustRegionOptimiser(NDOptimiser, ABC):
                            'energy and gradient having been evaluated')
             return np.inf
 
+        if not self._last_step_updated_coordinates:
+            logger.warning(f'Step {self.iteration} did not update the '
+                           'coordinates, using ρ = 0.5')
+            return 0.5
+
         if self.m is None:
             raise RuntimeError('Predicted energy update (m) undefined')
 
@@ -171,6 +172,17 @@ class TrustRegionOptimiser(NDOptimiser, ABC):
         predicted_diff = self._history.penultimate.e - self.m
 
         return true_diff / predicted_diff
+
+    @property
+    def _last_step_updated_coordinates(self) -> bool:
+        """
+        Did the last step in the optimiser update the coordinates
+
+        Returns:
+            (bool): If the last step updated the coordinates
+        """
+        dx = self._history.final - self._history.penultimate
+        return np.linalg.norm(dx) > 1E-10
 
 
 class CauchyTROptimiser(TrustRegionOptimiser):
