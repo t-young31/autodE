@@ -26,6 +26,8 @@ class TrustRegionOptimiser(NDOptimiser, ABC):
 
     def __init__(self,
                  maxiter:          int,
+                 gtol:            'autode.values.GradientNorm',
+                 etol:            'autode.values.PotentialEnergy',
                  trust_radius:     float,
                  coords:           Optional['autode.opt.OptCoordinates'] = None,
                  max_trust_radius: Optional[float] = None,
@@ -33,10 +35,15 @@ class TrustRegionOptimiser(NDOptimiser, ABC):
                  eta_2:            float = 0.25,
                  eta_3:            float = 0.75,
                  t_1:              float = 0.25,
-                 t_2:              float = 2.0):
+                 t_2:              float = 2.0,
+                 **kwargs):
         """Trust radius optimiser"""
 
-        super().__init__(maxiter=maxiter, coords=coords)
+        super().__init__(maxiter=maxiter,
+                         etol=etol,
+                         gtol=gtol,
+                         coords=coords, **kwargs)
+
         self.alpha = trust_radius
         self.alpha_max = (max_trust_radius if max_trust_radius is not None
                           else 10 * trust_radius)
@@ -45,9 +52,8 @@ class TrustRegionOptimiser(NDOptimiser, ABC):
         self._eta = _Eta(eta_1, eta_2, eta_3)
         self._t = _T(t_1, t_2)
 
-        self.rho: Optional[float] = None        # Actual vs. predicted change
-        self.m:   Optional[float] = None        # Energy estimate
-        self.p:   Optional[np.ndarray] = None   # Direction
+        self.m:       Optional[float] = None        # Energy estimate
+        self.p:       Optional[np.ndarray] = None   # Direction
 
     @classmethod
     def optimise(cls,
@@ -81,22 +87,31 @@ class TrustRegionOptimiser(NDOptimiser, ABC):
         """
         self._solve_subproblem()
 
+        e, g, h, p = self._coords.e, self._coords.g, self._coords.h, self.p
+        self.m = (e + np.dot(g, p) + 0.5 * np.dot(p, np.matmul(h, p)))
+
+        rho = self.rho
+        for thing in (self.iteration, self._coords.e, *self._coords, rho, self.alpha, np.linalg.norm(self.p), self._g_norm):
+            print(f'{round(thing, 3):10.3f}'
+                  f'', end=' ')
+        print()
+
         if self.iteration == 0:
             # First iteration, so take a normal step
             self._coords = self._coords + self.p
             return
 
-        if self.rho < self._eta[2]:
+        if rho < self._eta[2]:
             self.alpha *= self._t[1]
 
         else:
-            if self.rho > self._eta[3] and self._step_was_close_to_max:
+            if rho > self._eta[3] and self._step_was_close_to_max:
                 self.alpha = min(self._t[2] * self.alpha, self.alpha_max)
 
             else:
                 pass  # No updated required: α_k+1 = α_k
 
-        if self.rho > self._eta[1]:
+        if rho > self._eta[1]:
             self._coords = self._coords + self.p
 
         else:
@@ -115,7 +130,7 @@ class TrustRegionOptimiser(NDOptimiser, ABC):
         Returns:
             (bool): |p| ~ α_max
         """
-        return np.allclose(np.linalg.norm(self.p), self.alpha_max)
+        return np.allclose(np.linalg.norm(self.p), self.alpha)
 
     @abstractmethod
     def _solve_subproblem(self) -> None:
@@ -132,26 +147,35 @@ class TrustRegionOptimiser(NDOptimiser, ABC):
         """
         super()._update_gradient_and_energy()
         self._update_hessian()
-
-        if self.iteration > 1:
-            self.rho = ((self._history.penultimate.e - self._coords.e)
-                        / (self._history.penultimate.e - self.m))
-
-        self.m = (self._coords.e
-                  + np.dot(self._coords.g, self.p)
-                  + 0.5 * np.dot(self.p, np.matmul(self._coords.h, self.p)))
-
         return None
+
+    @property
+    def rho(self) -> float:
+        """
+        Calculate ρ, the ratio of the actual and predicted reductions
+
+        -----------------------------------------------------------------------
+        Returns:
+            (float): ρ
+        """
+
+        if self.iteration == 0:
+            logger.warning('ρ is unknown for the 0th iteration with only one '
+                           'energy and gradient having been evaluated')
+            return np.inf
+
+        if self.m is None:
+            raise RuntimeError('Predicted energy update (m) undefined')
+
+        true_diff = self._history.penultimate.e - self._history.final.e
+        predicted_diff = self._history.penultimate.e - self.m
+
+        return true_diff / predicted_diff
 
 
 class CauchyTROptimiser(TrustRegionOptimiser):
     """Most simple trust-radius optimiser, solving the subproblem with a
     cauchy point calculation"""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.tau: Optional[float] = None
 
     def _initialise_run(self) -> None:
         """Initialise a TR optimiser, so it can take the first step"""
@@ -188,17 +212,29 @@ class CauchyTROptimiser(TrustRegionOptimiser):
             p = -\tau \frac{\alpha}{|g|} g
 
         """
-        g, h = self._coords.g, self._coords.h
-        g_h_g = np.dot(g, np.matmul(h, g))
-
-        if g_h_g <= 0:
-            self.tau = 1.0
-        else:
-            self.tau = min((np.linalg.norm(g)**3 / (self.alpha * g_h_g), 1.0))
+        g = self._coords.g
 
         self.p = -self.tau * (self.alpha / np.linalg.norm(g)) * g
 
         return None
+
+    @property
+    def tau(self) -> float:
+        """
+        Calculate τ
+
+        ----------------------------------------------------------------------
+        Returns:
+            (float): τ
+        """
+
+        e, g, h = self._coords.e, self._coords.g, self._coords.h
+        g_h_g = np.dot(g, np.matmul(h, g))
+
+        if g_h_g <= 0:
+            return 1.0
+        else:
+            return min((np.linalg.norm(g) ** 3 / (self.alpha * g_h_g), 1.0))
 
 
 class _ParametersIndexedFromOne:
