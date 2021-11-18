@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Optional, Union
+from typing import Optional, Union, Sequence
 from abc import ABC, abstractmethod
 from autode.log import logger
 from autode.units import (ang, nm, pm, m)
@@ -15,10 +15,13 @@ class OptCoordinates(ValueArray, ABC):
     def __repr__(self):
         """Representation of these coordinates"""
 
-    def __new__(cls, input_array, units) -> 'OptCoordinates':
+    def __new__(cls,
+                input_array: Union[Sequence, np.ndarray],
+                units:       Union[str, 'autode.units.Unit']
+                ) -> 'OptCoordinates':
         """New instance of these coordinates"""
 
-        arr = super().__new__(cls, input_array, units)
+        arr = super().__new__(cls, np.array(input_array), units)
 
         arr._e = None              # Energy
         arr._g = None              # Gradient: dE/dX
