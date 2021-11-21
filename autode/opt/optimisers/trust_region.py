@@ -38,7 +38,6 @@ class TrustRegionOptimiser(NDOptimiser, ABC):
                  t_2:              float = 2.0,
                  **kwargs):
         """Trust radius optimiser"""
-
         super().__init__(maxiter=maxiter,
                          etol=etol,
                          gtol=gtol,
@@ -247,6 +246,125 @@ class CauchyTROptimiser(TrustRegionOptimiser):
             return 1.0
         else:
             return min((np.linalg.norm(g) ** 3 / (self.alpha * g_h_g), 1.0))
+
+
+class DoglegTROptimiser(CauchyTROptimiser):
+    """Dogleg Method for solving the subproblem"""
+
+    def _solve_subproblem(self) -> None:
+        """
+        Solve the subproblem to generate a dogleg step
+        """
+        tau, g, h = self.tau, self._coords.g, self._coords.h
+
+        p_u = - (np.dot(g, g) / np.dot(g, np.matmul(h, g))) * g
+
+        if 0 < tau <= 1:
+            self.p = tau * p_u
+
+        elif 1 < tau <= 2:
+            raise NotImplementedError
+            self.p = tau * p_u + (tau - 1) * (p_b - p_u)
+
+        else:
+            raise RuntimeError(f'τ = {tau} was outside the acceptable region')
+
+        return None
+
+
+class CGSteihaugTROptimiser(TrustRegionOptimiser):
+    """Conjugate Gradient Steihaung's Method"""
+
+    def __init__(self,
+                 *args,
+                 epsilon: float = 0.001,
+                 **kwargs):
+        """
+
+        -----------------------------------------------------------------------
+        Arguments:
+            *args: Arguments to pass to TrustRegionOptimiser
+
+            epsilon: ε parameter
+
+            **kwargs: Keyword arguments to pass to TrustRegionOptimiser
+        """
+        super().__init__(*args, **kwargs)
+
+        self.epsilon = epsilon
+
+    def _initialise_run(self) -> None:
+        """Initialise a TR optimiser, so it can take the first step"""
+
+        if self._coords is None:
+            self._coords = CartesianCoordinates(self._species.coordinates)
+
+        self._update_gradient_and_energy()
+        self._solve_subproblem()
+        return None
+
+    def _update_hessian(self) -> None:
+        """Hessian is always the identity matrix"""
+        # TODO - a better update
+
+        self._coords.h = np.eye(len(self._coords))
+        return None
+
+    def _discrete_p_opt(self, z, d):
+        """"""
+        # TODO: comments
+
+        e, g, h = self._coords.e, self._coords.g, self._coords.h
+        tau_arr, m_arr = np.linspace(-1, 1, num=1000), []
+
+        for tau in tau_arr:
+
+            p = z + tau * d
+            m = (e + np.dot(g, p) + 0.5 * np.dot(p, np.matmul(h, p)))
+
+            m_arr.append(m)
+
+        min_m_tau = tau_arr[np.argmin(m_arr)]
+        logger.info(f'Optimised τ={min_m_tau:.6f}')
+
+        return z + min_m_tau * d
+
+    def _solve_subproblem(self) -> None:
+        """
+        Solve the subproblem for a direction
+        """
+        h = self._coords.h
+        z, r = 0.0, np.array(self._coords.g, copy=True)
+        d = -r.copy()
+
+        if np.linalg.norm(r) < self.epsilon:
+            self.p = 0
+            return
+
+        for j in range(100):
+
+            if np.dot(d, np.matmul(h, d)) <= 0:
+                self.p = self._discrete_p_opt(z, d)
+                return
+
+            alpha = np.dot(r, r) / (np.dot(d, np.matmul(h, d)))
+            z += alpha*d
+
+            if np.linalg.norm(z) >= self.alpha:
+                self.p = self._discrete_p_opt(z, d)
+                return
+
+            r_old = r.copy()
+            r += alpha * np.matmul(h, d)
+
+            if np.linalg.norm(r) < self.epsilon:
+                self.p = z
+                return
+
+            beta = np.dot(r, r) / np.dot(r_old, r_old)
+            d = -r + beta * d
+
+        raise RuntimeError('Failed to converge CG trust region solve')
 
 
 class _ParametersIndexedFromOne:
