@@ -15,9 +15,10 @@ https://optimization.mccormick.northwestern.edu/index.php/Trust-region_methods
 with :math:`\Delta \equiv \alpha`
 """
 import numpy as np
-from typing import Optional
+from typing import Optional, Union
 from abc import ABC, abstractmethod
 from autode.log import logger
+from autode.values import GradientNorm, PotentialEnergy
 from autode.opt.optimisers.base import NDOptimiser
 from autode.opt import CartesianCoordinates
 
@@ -60,6 +61,8 @@ class TrustRegionOptimiser(NDOptimiser, ABC):
                  method:      'autode.wrappers.base.Method',
                  n_cores:      Optional[int] = None,
                  coords:       Optional['autode.opt.OptCoordinates'] = None,
+                 gtol:         Union[float, GradientNorm] = GradientNorm(1E-3, units='Ha Å-1'),
+                 etol:         Union[float, PotentialEnergy] = PotentialEnergy(1E-4, units='Ha'),
                  maxiter:      int = 5,
                  trust_radius: float = 1.0,
                  **kwargs
@@ -69,6 +72,8 @@ class TrustRegionOptimiser(NDOptimiser, ABC):
         """
 
         optimiser = cls(maxiter=maxiter,
+                        gtol=gtol,
+                        etol=etol,
                         trust_radius=trust_radius,
                         coords=coords)
 
