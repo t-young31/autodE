@@ -57,15 +57,8 @@ class RFOOptimiser(NDOptimiser):
 
         # and the step scaled by the final element of the eigenvector
         delta_s = aug_H_v[:-1, mode] / aug_H_v[-1, mode]
-        max_step_component = np.max(np.abs(delta_s))
 
-        if max_step_component > self.alpha:
-            logger.warning(f'Maximum component of the step '
-                           f'{max_step_component:.4} > {self.alpha:.4f} '
-                           f'. Scaling down')
-            delta_s *= self.alpha / max_step_component
-
-        self._coords = self._coords + delta_s
+        self._coords = self._coords + self._sanitised_step(delta_s)
         return None
 
     def _initialise_run(self) -> None:
@@ -75,6 +68,7 @@ class RFOOptimiser(NDOptimiser):
 
         self._coords = CartesianCoordinates(self._species.coordinates).to('dic')
         self._coords.update_h_from_cart_h(self._low_level_cart_hessian)
+        self._coords.make_hessian_positive_definite()
         self._update_gradient_and_energy()
 
         return None
@@ -94,14 +88,20 @@ class RFOOptimiser(NDOptimiser):
         species.calc_hessian(method=get_lmethod(),
                              n_cores=self._n_cores)
 
-        eigval, eigvec = np.linalg.eig(species.hessian)
+        return species.hessian
 
-        if np.all(eigval > 0):
-            logger.info('Low-level Hessian was positive definite')
-            return species.hessian
+    def _sanitised_step(self, delta_s: np.ndarray) -> np.ndarray:
+        """Ensure the step to be taken isn't too large"""
 
-        logger.warning('Low-level Hessian was not positive definite. '
-                       'Shifting eigenvalues to 0 and reconstructing')
-        eigval[eigval < 0] = 0
+        max_step_component = np.max(np.abs(delta_s))
 
-        return np.linalg.multi_dot((eigvec, np.diag(eigval), eigvec.T)).real
+        if max_step_component > 100 * self.alpha:
+            raise RuntimeError('About to perform a huge unreasonable step!')
+
+        if max_step_component > self.alpha:
+            logger.warning(f'Maximum component of the step '
+                           f'{max_step_component:.4} > {self.alpha:.4f} '
+                           f'. Scaling down')
+            delta_s *= self.alpha / max_step_component
+
+        return delta_s

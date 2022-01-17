@@ -17,8 +17,10 @@ summarised below:
 """
 import numpy as np
 from time import time
-from typing import Type, Optional
+from typing import Optional
+from autode.geom import rotate_columns
 from autode.log import logger
+from autode.opt.coordinates.primitives import ConstrainedDistance
 from autode.opt.coordinates.internals import (PIC,
                                               InverseDistances,
                                               InternalCoordinates)
@@ -58,19 +60,26 @@ class DIC(InternalCoordinates):  # lgtm [py/missing-equals]
             (np.ndarray): U
         """
 
-        B_q = primitives.B
-        G = np.matmul(B_q, B_q.T)
-
-        w, v = np.linalg.eigh(G)  # Eigenvalues and eigenvectors respectively
+        w, v = np.linalg.eigh(primitives.G)
 
         # Form a transform matrix from the primitive internals to a set of
         # 3N - 6 non-redundant internals, s
-        return v[:, np.where(np.abs(w) > 1E-10)[0]]
+        v = v[:, np.where(np.abs(w) > 1E-10)[0]]
+
+        # Move all the weight along constrained distances to the single DIC
+        # coordinates, so that Lagrange multipliers are easy to add
+        idxs = [i for i, coord in enumerate(primitives)
+                if isinstance(coord, ConstrainedDistance)]
+
+        if len(idxs) > 0:
+            v = rotate_columns(v, *idxs)
+
+        return v
 
     @classmethod
     def from_cartesian(cls,
-                       x:             'autode.opt.cartesian.CartesianCoordinates',
-                       primitive_type: Type[PIC] = InverseDistances
+                       x:          'autode.opt.cartesian.CartesianCoordinates',
+                       primitives:  Optional[PIC] = None,
                        ) -> 'autode.opt.coordinates.dic.DIC':
         """
         Convert cartesian coordinates to primitives then to delocalised
@@ -79,10 +88,10 @@ class DIC(InternalCoordinates):  # lgtm [py/missing-equals]
 
         -----------------------------------------------------------------------
         Arguments:
-            x (autode.opt.CartesianCoordinates): Cartesian coordinates
+            x: Cartesian coordinates
 
-            primitive_type (autode.opt.internals.PIC): Primitive internal
-                           coordinates, constructable from Cartesian
+            primitives: Primitive internal
+                        coordinates, constructable from Cartesian
 
         Returns:
             (autode.opt.coordinates.DIC): Delocalised internal coordinates
@@ -90,28 +99,31 @@ class DIC(InternalCoordinates):  # lgtm [py/missing-equals]
         logger.info('Converting cartesian coordinates to DIC')
         start_time = time()
 
-        primitives = primitive_type(x)
+        if primitives is None:
+            logger.info('Building DICs from all inverse distances')
+            primitives = InverseDistances.from_cartesian(x)
+
+        q = primitives(x)
         U = cls._calc_U(primitives)
-        s = cls(input_array=np.matmul(U.T, primitives.q))
+        dic = cls(input_array=np.matmul(U.T, q))
 
-        s.U = U                  # Transform matrix primitives -> non-redundant
+        dic.U = U                # Transform matrix primitives -> non-redundant
 
-        s.e = x.e                                           # Energy
+        dic.B = np.matmul(U.T, primitives.B)
+        dic.B_T_inv = np.linalg.pinv(dic.B)
+        dic._x = x.copy()
+        dic.primitives = primitives
 
-        s.B = np.matmul(U.T, primitives.B)
-        s.B_T_inv = np.linalg.pinv(s.B)
-        s._x = x.copy()
-        s.primitive_type = primitive_type
-
-        s.update_g_from_cart_g(x.g)                        # Gradient
-        s.update_h_from_cart_h(x.h)                        # and Hessian
+        dic.e = x.e                                          # Energy
+        dic.update_g_from_cart_g(x.g)                        # Gradient
+        dic.update_h_from_cart_h(x.h)                        # and Hessian
 
         logger.info(f'Transformed in      ...{time() - start_time:.4f} s')
-        return s
+        return dic
 
-    def update_g_from_cart_g(self,
-                             arr: Optional['autode.values.Gradient']
-                             ) -> None:
+    def _update_g_from_cart_g(self,
+                              arr: Optional['autode.values.Gradient']
+                              ) -> None:
         """
         Updates the gradient from a calculated Cartesian gradient
 
@@ -128,9 +140,9 @@ class DIC(InternalCoordinates):  # lgtm [py/missing-equals]
 
         return None
 
-    def update_h_from_cart_h(self,
-                             arr: Optional['autode.values.Hessian']
-                             ) -> None:
+    def _update_h_from_cart_h(self,
+                              arr: Optional['autode.values.Hessian']
+                              ) -> None:
         """
         Update the DIC Hessian matrix from a Cartesian one
 
@@ -142,13 +154,17 @@ class DIC(InternalCoordinates):  # lgtm [py/missing-equals]
             self._x.h, self.h = None, None
 
         else:
+            self._x.h = arr
+
             # NOTE: This is not the full transformation as noted in
             # 10.1063/1.471864 only an approximate Hessian is required(?)
             self.h = np.linalg.multi_dot((self.B_T_inv.T, arr, self.B_T_inv))
 
         return None
 
-    def to(self, value: str) -> 'autode.opt.coordinates.base.OptCoordinates':
+    def to(self,
+           value: str
+           ) -> 'autode.opt.coordinates.base.OptCoordinates':
         """
         Convert these DICs to another type of coordinate
 
@@ -165,7 +181,10 @@ class DIC(InternalCoordinates):  # lgtm [py/missing-equals]
 
         raise ValueError(f'Unknown conversion to {value}')
 
-    def update(self, delta) -> None:
+    def iadd(self,
+             value: np.ndarray
+             ) -> 'autode.opt.coordidnates.base.OptCoordinates':
+
         """
         Set some new internal coordinates and update the Cartesian coordinates
 
@@ -178,14 +197,14 @@ class DIC(InternalCoordinates):  # lgtm [py/missing-equals]
         ----------------------------------------------------------------------
         Keyword Arguments:
 
-            delta (int | float | np.ndarray): Difference between the current
+            value (int | float | np.ndarray): Difference between the current
                                               and new DICs. Must be
                                               broadcastable into self.shape.
         Raises:
             (RuntimeError): If the transformation diverges
         """
         start_time = time()
-        s_new = self.raw + delta
+        s_new = self.raw + value
 
         # Initialise
         s_k, x_k = self.raw, self._x.copy()
@@ -201,10 +220,9 @@ class DIC(InternalCoordinates):  # lgtm [py/missing-equals]
                                    'transformation from internal -> carts')
 
             # Rebuild the primitives from the back-transformed Cartesians
-            primitives = self.primitive_type(x_k)
-            s_k = np.matmul(self.U.T, primitives.q)
+            s_k = np.matmul(self.U.T, self.primitives(x_k))
 
-            B = np.matmul(self.U.T, primitives.B)
+            B = np.matmul(self.U.T, self.primitives.B)
             self.B_T_inv = np.linalg.pinv(B)
 
             iteration += 1
@@ -217,11 +235,5 @@ class DIC(InternalCoordinates):  # lgtm [py/missing-equals]
 
         self._x = x_k
         self._x.clear_tensors()
-        return None
 
-    def iadd(self,
-             value: np.ndarray
-             ) -> 'autode.opt.coordidnates.base.OptCoordinates':
-        """Inplace addition of another set of coordinates"""
-        self.update(delta=value)
         return self

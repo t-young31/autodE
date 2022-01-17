@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from autode import Molecule, Atom
 from autode.opt.coordinates.internals import InverseDistances
-from autode.opt.coordinates.primitives import InverseDistance
+from autode.opt.coordinates.primitives import InverseDistance, Distance
 from autode.opt.coordinates.cartesian import CartesianCoordinates
 from autode.opt.coordinates.dic import DIC
 
@@ -19,7 +19,7 @@ def h2():
     return Molecule(name='h2', atoms=[Atom('H'), Atom('H', x=1.5)])
 
 
-def test_primitives():
+def test_inv_dist_primitives():
 
     arr = np.array([[0.0, 0.0, 0.0],
                     [2.0, 0.0, 0.0]])
@@ -43,6 +43,30 @@ def test_primitives():
                       0)
 
 
+def test_dist_primitives():
+
+    arr = np.array([[0.0, 0.0, 0.0],
+                    [2.0, 0.0, 0.0]])
+
+    x = CartesianCoordinates(arr)
+
+    inv_dist = Distance(0, 1)
+    assert np.isclose(inv_dist(x), 2.0)
+
+    assert np.isclose(inv_dist.derivative(0, 'x', x=x),
+                      -2/2)
+
+    assert np.isclose(inv_dist.derivative(1, 'x', x=x),
+                      +2/2)
+
+    for component in ('y', 'z'):
+        assert np.isclose(inv_dist.derivative(1, component, x=x),
+                          0)
+
+    assert np.isclose(inv_dist.derivative(2, 'x', x=x),
+                      0)
+
+
 def test_primitive_equality():
 
     assert InverseDistance(0, 1) != 'a'
@@ -53,10 +77,13 @@ def test_primitive_equality():
 def test_primitives_equality():
 
     x = CartesianCoordinates(h2().coordinates)
-    primitives = InverseDistances(x)
+    primitives = InverseDistances.from_cartesian(x)
 
     assert primitives != 'a'
-    assert primitives == InverseDistances(x)
+    assert primitives == InverseDistances.from_cartesian(x)
+    
+    # Order does not matter for equality
+    assert primitives == InverseDistances(InverseDistance(1, 0))
 
 
 def test_cartesian_coordinates():
@@ -175,6 +202,14 @@ def test_basic_dic_properties():
         _ = x.to('unknown coordinates')
 
 
+def test_invalid_pic_construction():
+
+    # Cannot construct some primitives e.g. InverseDistances from non Primitive
+    # internal coordinates
+    with pytest.raises(ValueError):
+        _ = InverseDistances('a')
+
+
 def test_cart_to_dic():
 
     arr = np.array([[0.0, 0.0, 0.0],
@@ -183,8 +218,12 @@ def test_cart_to_dic():
     x = CartesianCoordinates(arr)
 
     # Should only have 1 internal coordinate
-    pic = InverseDistances(x)
+    pic = InverseDistances.from_cartesian(x)
     assert len(pic) == 1
+
+    # and not have a B matrix
+    with pytest.raises(AttributeError):
+        _  = pic.B
 
     # Delocalised internals should preserve the single internal coordinate
     dics = x.to('dic')
@@ -214,7 +253,7 @@ def test_simple_dic_to_cart():
     assert np.isclose(0.6, (dic + 0.1)[0], atol=1E-6)
     # Updating the DICs should afford cartesian coordinates that are
     # ~1.7 Å apart (1/r = 0.6)
-    dic.update(delta=0.1)
+    dic.iadd(value=0.1)
     assert dic.shape == (1,)
     assert np.isclose(dic[0], 0.6)
 
@@ -231,7 +270,7 @@ def test_methane_cart_to_dic():
     dic = x.to('dic')
     assert len(dic) == 9   # 3N-6 for N=5
 
-    dic.update(delta=np.array([0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]))
+    dic.iadd(value=np.array([0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]))
 
     # Cartesian coordinates should be close to the starting ones
     assert np.linalg.norm(x - dic.to('cart')) < 0.5
@@ -250,7 +289,7 @@ def test_co2_cart_to_dic():
     # Applying a shift to the internal coordinates that are close to linear
     # can break the back transformation to Cartesians
     with pytest.raises(RuntimeError):
-        dic.update(delta=np.array([0.0, 0.0, 0.1]))
+        dic.iadd(value=np.array([0.0, 0.0, 0.1]))
 
 
 def test_grad_transform_linear():
@@ -268,12 +307,8 @@ def test_grad_transform_linear():
         _x = _x.reshape((-1, 3))
         diff = _x[0, 0] - _x[1, 0]
         r = np.linalg.norm(_x[0] - _x[1])
-        return np.array([k * (r - r0) * diff/r,
-                         0.0,
-                         0.0,
-                         - k * (r - r0) * diff/r,
-                         0.0,
-                         0.0])
+        return np.array([[k * (r - r0) * diff/r, 0.0, 0.0],
+                         [- k * (r - r0) * diff/r, 0.0, 0.0]])
 
     def num_grad(_x, h=1E-8):
 
@@ -286,7 +321,7 @@ def test_grad_transform_linear():
             g_i = (energy(x_ph) - energy(_x)) / h
             _g.append(g_i)
 
-        return np.array(_g)
+        return np.array(_g).reshape((2, 3))
 
     coords = np.array([[0.0, 0.0, 0.0],
                        [2.0, 0.0, 0.0]])
@@ -304,7 +339,7 @@ def test_grad_transform_linear():
 
     # Determined by hand
     assert np.isclose(dic.g[0],
-                      -1/0.5**2 * grad(coords)[3])
+                      -1/0.5**2 * grad(coords).flatten()[3])
 
 
 def test_hess_transform_linear():
