@@ -2,7 +2,7 @@
 https://en.wikipedia.org/wiki/Broyden%E2%80%93Fletcher%E2%80%93Goldfarb%E2%80%93Shanno_algorithm
 """
 import numpy as np
-from autode.opt.coordinates.cartesian import CartesianCoordinates
+from autode.opt.coordinates.cartesian import CartesianCoordinates3D
 from autode.opt.optimisers.bfgs import BFGSOptimiser
 from autode.opt.optimisers.line_search import NullLineSearch, ArmijoLineSearch, SArmijoLineSearch
 from autode.species import Molecule
@@ -22,7 +22,7 @@ class TestBFGSOptimiser2D(BFGSOptimiser):
                          etol=etol, gtol=gtol)
 
         init_arr = np.array([init_x, init_y])
-        self._coords = CartesianCoordinates(init_arr)
+        self._coords = CartesianCoordinates3D(init_arr)
 
         self.e_func = e_func
         self.g_func = g_func

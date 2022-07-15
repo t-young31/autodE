@@ -4,8 +4,8 @@ from autode.methods import XTB
 from autode.values import GradientRMS, PotentialEnergy
 from autode.utils import work_in_tmp_dir
 from ..testutils import requires_with_working_xtb_install
-from .molecules import h2, methane_mol
-from autode.opt.coordinates import CartesianCoordinates
+from .molecules import h2_mol, methane_mol
+from autode.opt.coordinates import CartesianCoordinates3D
 from autode.opt.optimisers.steepest_descent import (CartesianSDOptimiser,
                                                     DIC_SD_Optimiser)
 
@@ -75,8 +75,8 @@ def test_abs_diff_e():
 
     # Define a intermediate optimiser state with two sets of coordinates
     optimiser = sample_cartesian_optimiser()
-    optimiser._history.append(CartesianCoordinates([0.0, 1.0]))
-    optimiser._history.append(CartesianCoordinates([0.0, 1.1]))
+    optimiser._history.append(CartesianCoordinates3D([0.0, 1.0]))
+    optimiser._history.append(CartesianCoordinates3D([0.0, 1.1]))
 
     # 2nd iteration for a history of two, indexed from 0
     assert optimiser.iteration == 1
@@ -104,7 +104,7 @@ def test_g_norm():
     assert not np.isfinite(optimiser._g_norm)
 
     # Likewise if the gradient is unset
-    optimiser._coords = CartesianCoordinates([1.0, 0.0, 0.0])
+    optimiser._coords = CartesianCoordinates3D([1.0, 0.0, 0.0])
     assert optimiser._coords.g is None
     assert not np.isfinite(optimiser._g_norm)
 
@@ -116,12 +116,12 @@ def test_optimiser_h_update():
     # Remove any possible updater type
     optimiser._hessian_update_types = []
 
-    c1 = CartesianCoordinates([1.0, 0.0, 0.0])
+    c1 = CartesianCoordinates3D([1.0, 0.0, 0.0])
     c1.h = np.eye(3)
 
     optimiser._history.append(c1)
 
-    c2 = CartesianCoordinates([1.1, 0.0, 0.0])
+    c2 = CartesianCoordinates3D([1.1, 0.0, 0.0])
     c2.h = np.eye(3)
 
     optimiser._history.append(c2)
@@ -158,7 +158,7 @@ def test_history():
 @requires_with_working_xtb_install
 def test_xtb_h2_cart_opt():
 
-    mol = h2()
+    mol = h2_mol()
     CartesianSDOptimiser.optimise(mol, method=XTB(), maxiter=50)
 
     # Optimised H-H distance is ~0.7 Å
@@ -174,12 +174,12 @@ def test_xtb_h2_cart_opt():
                                      etol=PotentialEnergy(1E-3),
                                      )
     assert not optimiser.converged
-    optimiser._species = h2()
+    optimiser._species = h2_mol()
 
     assert not optimiser.converged
 
     # Should not converge in only two steps
-    optimiser.run(method=XTB(), species=h2())
+    optimiser.run(method=XTB(), species=h2_mol())
     assert not optimiser.converged
 
 
@@ -193,7 +193,7 @@ def test_xtb_h2_dic_opt():
                                  gtol=GradientRMS(0.01),
                                  etol=PotentialEnergy(0.0001))
 
-    mol = h2()
+    mol = h2_mol()
     # Should optimise fast, in only a few steps
     optimiser.run(species=mol, method=XTB())
 

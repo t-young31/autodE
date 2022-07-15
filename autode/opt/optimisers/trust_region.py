@@ -20,7 +20,7 @@ from abc import ABC, abstractmethod
 from autode.log import logger
 from autode.values import GradientRMS, PotentialEnergy
 from autode.opt.optimisers.base import NDOptimiser
-from autode.opt import CartesianCoordinates
+from autode.opt import CartesianCoordinates3D
 
 
 class TrustRegionOptimiser(NDOptimiser, ABC):
@@ -197,7 +197,7 @@ class CauchyTROptimiser(TrustRegionOptimiser):
         """Initialise a TR optimiser, so it can take the first step"""
 
         if self._coords is None:
-            self._coords = CartesianCoordinates(self._species.coordinates)
+            self._coords = CartesianCoordinates3D(self._species.coordinates)
 
         self._update_gradient_and_energy()
         self._solve_subproblem()
@@ -280,7 +280,7 @@ class DoglegTROptimiser(CauchyTROptimiser):
 class CGSteihaugTROptimiser(TrustRegionOptimiser):
     """Conjugate Gradient Steihaung's Method"""
 
-    coordinate_type = CartesianCoordinates
+    coordinate_type = CartesianCoordinates3D
 
     def __init__(self,
                  *args,

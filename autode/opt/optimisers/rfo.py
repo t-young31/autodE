@@ -3,7 +3,7 @@ from autode.log import logger
 from autode.utils import work_in_tmp_dir
 from autode.methods import get_lmethod
 from autode.opt.optimisers.base import NDOptimiser
-from autode.opt.coordinates import CartesianCoordinates
+from autode.opt.coordinates import CartesianCoordinates3D
 from autode.opt.optimisers.hessian_update import BFGSUpdate, NullUpdate
 
 
@@ -66,7 +66,7 @@ class RFOptimiser(NDOptimiser):
         Initialise the energy, gradient, and initial Hessian to use
         """
 
-        self._coords = CartesianCoordinates(self._species.coordinates).to('dic')
+        self._coords = CartesianCoordinates3D(self._species.coordinates).to('dic')
         self._coords.update_h_from_cart_h(self._low_level_cart_hessian)
         self._coords.make_hessian_positive_definite()
         self._update_gradient_and_energy()

@@ -1,7 +1,7 @@
 """Partitioned rational function optimisation"""
 import numpy as np
 from autode.log import logger
-from autode.opt.coordinates import CartesianCoordinates
+from autode.opt.coordinates import CartesianCoordinates3D
 from autode.opt.optimisers.rfo import RFOptimiser
 from autode.opt.optimisers.hessian_update import BofillUpdate
 
@@ -103,6 +103,6 @@ class PRFOptimiser(RFOptimiser):
         Initialise running a partitioned rational function optimisation by
         setting the coordinates and Hessian
         """
-        self._coords = CartesianCoordinates(self._species.coordinates).to('dic')
+        self._coords = CartesianCoordinates3D(self._species.coordinates).to('dic')
         self._update_hessian_gradient_and_energy()
         return None

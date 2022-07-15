@@ -3,7 +3,7 @@ import pytest
 
 from autode.wrappers.base import Method
 from autode.species import Molecule
-from autode.opt.coordinates import CartesianCoordinates
+from autode.opt.coordinates import CartesianCoordinates3D
 from autode.opt.optimisers.trust_region import (CauchyTROptimiser,
                                                 DoglegTROptimiser,
                                                 CGSteihaugTROptimiser)
@@ -84,7 +84,7 @@ class BraninCGSteihaugTROptimiser(CGSteihaugTROptimiser):
         return np.linalg.norm(self._coords.g) < self._gtol
 
 def test_trm_base_properties():
-    init_coords = CartesianCoordinates([6.0, 14.0])
+    init_coords = CartesianCoordinates3D([6.0, 14.0])
 
     optimiser = BraninCauchyTROptimiser(maxiter=20,
                                         etol=100,  # Some large value
@@ -97,7 +97,7 @@ def test_trm_base_properties():
     assert np.allclose(optimiser._coords.h, np.eye(len(init_coords)))
 
     # rho requires a gradient to be evaluated
-    optimiser._history.append(CartesianCoordinates([5.5, 13.0]))
+    optimiser._history.append(CartesianCoordinates3D([5.5, 13.0]))
     with pytest.raises(Exception):
         _ = optimiser.rho
 
@@ -107,7 +107,7 @@ def test_branin_minimisation():
     https://optimization.mccormick.northwestern.edu/index.php/Trust-region_methods
     """
 
-    init_coords = CartesianCoordinates([6.0, 14.0])
+    init_coords = CartesianCoordinates3D([6.0, 14.0])
 
     optimiser = BraninCauchyTROptimiser(maxiter=20,
                                         etol=100,  # Some large value
@@ -134,7 +134,7 @@ def test_branin_dogleg_minimisation():
     optimiser = BraninDoglegTROptimiser(maxiter=1000,
                                         etol=100,  # Some large value
                                         trust_radius=2.0,
-                                        coords=CartesianCoordinates([6., 14.]),
+                                        coords=CartesianCoordinates3D([6., 14.]),
                                         gtol=0.01,
                                         max_trust_radius=5.0,
                                         t_1=0.25,
@@ -157,7 +157,7 @@ def test_branin_cg_minimisation():
                             maxiter=1000,
                             etol=100,  # Some large value
                             trust_radius=2.0,
-                            coords=CartesianCoordinates([6., 14.]),
+                            coords=CartesianCoordinates3D([6., 14.]),
                             gtol=0.01,
                             max_trust_radius=5.0,
                             t_1=0.25,
@@ -175,7 +175,7 @@ def test_branin_cg_minimisation():
                        atol=0.02)
 
     # Should also be able to optimise directly
-    coords = CartesianCoordinates([6., 14.])
+    coords = CartesianCoordinates3D([6., 14.])
     BraninCGSteihaugTROptimiser.optimise(Molecule(name='blank'),
                                          method=Method(),
                                          gtol=0.01,
@@ -191,7 +191,7 @@ def test_base_cg_properties():
                                       trust_radius=1.0,
                                       etol=1,
                                       gtol=0.1,
-                                      coords=CartesianCoordinates([0.1, 0.0]))
+                                      coords=CartesianCoordinates3D([0.1, 0.0]))
 
     assert not optimiser.converged
 

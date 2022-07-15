@@ -1,5 +1,5 @@
 from abc import ABC
-from autode.opt.coordinates.cartesian import CartesianCoordinates
+from autode.opt.coordinates.cartesian import CartesianCoordinates3D
 from autode.opt.optimisers.base import NDOptimiser
 
 
@@ -42,7 +42,7 @@ class CartesianSDOptimiser(SteepestDescent):
         Initialise a set of cartesian coordinates. As a species' coordinates
         are already Cartesian there is nothing special to do
         """
-        self._coords = CartesianCoordinates(self._species.coordinates)
+        self._coords = CartesianCoordinates3D(self._species.coordinates)
         self._update_gradient_and_energy()
 
 
@@ -51,5 +51,5 @@ class DIC_SD_Optimiser(SteepestDescent):
 
     def _initialise_run(self) -> None:
         """Initialise the delocalised internal coordinates"""
-        self._coords = CartesianCoordinates(self._species.coordinates).to('dic')
+        self._coords = CartesianCoordinates3D(self._species.coordinates).to('dic')
         self._update_gradient_and_energy()

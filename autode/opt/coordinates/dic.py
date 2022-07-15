@@ -72,7 +72,7 @@ class DIC(InternalCoordinates):  # lgtm [py/missing-equals]
 
     @classmethod
     def from_cartesian(cls,
-                       x:         'autode.opt.coordinates.CartesianCoordinates',
+                       x: 'autode.opt.coordinates.CartesianCoordinates3D',
                        primitives: Optional[PIC] = None,
                        ) -> 'autode.opt.coordinates.dic.DIC':
         """

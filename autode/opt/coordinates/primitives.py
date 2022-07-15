@@ -23,7 +23,7 @@ class Primitive(ABC):
     def derivative(self,
                    i:         int,
                    component: 'autode.opt.coordinates.CartesianComponent',
-                   x:         'autode.opt.coordinates.CartesianCoordinates'
+                   x: 'autode.opt.coordinates.CartesianCoordinates'
                    ) -> float:
         r"""
         Calculate the derivative with respect to a cartesian coordinate
@@ -70,14 +70,14 @@ class ConstrainedPrimitive(Primitive, ABC):
         """Value of the constraint that must be satisfied e.g. r0"""
 
     def is_satisfied(self,
-                     x:   'autode.opt.coordinates.CartesianCoordinates',
+                     x: 'autode.opt.coordinates.CartesianCoordinates3D',
                      tol: float = 1E-4
                      ) -> bool:
         """Is this constraint satisfied to within an absolute tolerance"""
         return abs(self.delta(x)) < tol
 
     def delta(self,
-              x: 'autode.opt.coordinates.CartesianCoordinates',
+              x: 'autode.opt.coordinates.CartesianCoordinates3D',
               ) -> float:
         """Difference between the observed and required value"""
         return self(x) - self._value
@@ -128,7 +128,7 @@ class InverseDistance(_DistanceFunction):
     def derivative(self,
                    i:          int,
                    component: 'autode.opt.coordinates.CartesianComponent',
-                   x:         'autode.opt.coordinates.CartesianCoordinates'
+                   x: 'autode.opt.coordinates.CartesianCoordinates3D'
                    ) -> float:
         """
         Derivative with respect to Cartesian displacement
@@ -138,24 +138,22 @@ class InverseDistance(_DistanceFunction):
             :py:meth:`Primitive.derivative <Primitive.derivative>`
         """
 
-        _x = x.reshape((-1, 3))
         k = int(component)
 
         if i != self.i and i != self.j:
             return 0                 # Atom does not form part of this distance
 
         elif i == self.i:
-            return - (_x[i, k] - _x[self.j, k]) * self(x) ** 3
+            return - (x[i, k] - x[self.j, k]) * self(x) ** 3
 
         else:  # i == self.idx_j:
-            return (_x[self.i, k] - _x[self.j, k]) * self(x) ** 3
+            return (x[self.i, k] - x[self.j, k]) * self(x) ** 3
 
     def __call__(self,
-                 x: 'autode.opt.coordinates.CartesianCoordinates'
+                 x: 'autode.opt.coordinates.CartesianCoordinates3D'
                  ) -> float:
         """1 / |x_i - x_j| """
-        _x = x.reshape((-1, 3))
-        return 1.0 / np.linalg.norm(_x[self.i] - _x[self.j])
+        return 1.0 / np.linalg.norm(x[self.i] - x[self.j])
 
 
 class Distance(_DistanceFunction):
@@ -170,7 +168,7 @@ class Distance(_DistanceFunction):
     def derivative(self,
                    i:          int,
                    component: 'autode.opt.coordinates.CartesianComponent',
-                   x:         'autode.opt.coordinates.CartesianCoordinates'
+                   x: 'autode.opt.coordinates.CartesianCoordinates'
                    ) -> float:
         """
         Derivative with respect to Cartesian displacement
@@ -179,13 +177,12 @@ class Distance(_DistanceFunction):
         See Also:
             :py:meth:`Primitive.derivative <Primitive.derivative>`
         """
-        _x = x.reshape((-1, 3))
         k = int(component)
 
         if i != self.i and i != self.j:
             return 0                 # Atom does not form part of this distance
 
-        val = (_x[self.i, k] - _x[self.j, k]) / self(x)
+        val = (x[self.i, k] - x[self.j, k]) / self(x)
 
         return val if i == self.i else -val
 
@@ -250,9 +247,8 @@ class BondAngle(Primitive):
     def __call__(self,
                  x: 'autode.opt.coordinates.CartesianCoordinates') -> float:
 
-        _x = x.reshape((-1, 3))
-        u = _x[self.m, :] - _x[self.o, :]
-        v = _x[self.n, :] - _x[self.o, :]
+        u = x[self.m, :] - x[self.o, :]
+        v = x[self.n, :] - x[self.o, :]
 
         theta = np.arccos(u.dot(v)
                           / (np.linalg.norm(u) * np.linalg.norm(v)))
@@ -269,12 +265,11 @@ class BondAngle(Primitive):
 
         k = int(component)
 
-        _x = x.reshape((-1, 3))
-        u = _x[self.m, :] - _x[self.o, :]
+        u = x[self.m, :] - x[self.o, :]
         lambda_u = np.linalg.norm(u)
         u /= lambda_u
 
-        v = _x[self.n, :] - _x[self.o, :]
+        v = x[self.n, :] - x[self.o, :]
         lambda_v = np.linalg.norm(v)
         v /= lambda_v
 
@@ -373,16 +368,15 @@ class DihedralAngle(Primitive):
         """Evaluate either the value or the derivative. Shared function
         to reuse local variables"""
 
-        _x = x.reshape((-1, 3))
-        u = _x[self.m, :] - _x[self.o, :]
+        u = x[self.m, :] - x[self.o, :]
         lambda_u = np.linalg.norm(u)
         u /= lambda_u
 
-        v = _x[self.n, :] - _x[self.p, :]
+        v = x[self.n, :] - x[self.p, :]
         lambda_v = np.linalg.norm(v)
         v /= lambda_v
 
-        w = _x[self.p, :] - _x[self.o, :]
+        w = x[self.p, :] - x[self.o, :]
         lambda_w = np.linalg.norm(w)
         w /= lambda_w
 

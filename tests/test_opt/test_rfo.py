@@ -4,7 +4,7 @@ from autode.wrappers.XTB import XTB
 from autode.wrappers.base import Method
 from autode.utils import work_in_tmp_dir
 from autode.opt.optimisers.rfo import RFOptimiser
-from autode.opt.coordinates import CartesianCoordinates
+from autode.opt.coordinates import CartesianCoordinates3D
 from ..testutils import requires_with_working_xtb_install
 
 
@@ -18,7 +18,7 @@ class TestRFOOptimiser2D(RFOptimiser):
         super().__init__(maxiter=maxiter, etol=etol, gtol=gtol, **kwargs)
 
         init_arr = np.array([init_x, init_y])
-        self._coords = CartesianCoordinates(init_arr)
+        self._coords = CartesianCoordinates3D(init_arr)
         self._coords.h = np.eye(2)
 
         self.e_func = e_func

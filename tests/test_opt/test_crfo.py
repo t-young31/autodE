@@ -8,7 +8,7 @@ from autode.atoms import Atom
 from autode.methods import XTB
 from autode.opt.coordinates.internals import PIC
 from autode.opt.optimisers.crfo import CRFOptimiser
-from autode.opt.coordinates import CartesianCoordinates, DICWithConstraints
+from autode.opt.coordinates import CartesianCoordinates3D, DICWithConstraints
 from autode.utils import work_in_tmp_dir
 from ..testutils import requires_with_working_xtb_install
 
@@ -118,7 +118,7 @@ def test_primitive_projection_discard():
     # Current distance that will be constrained
     r_initial = optimiser._species.distance(0, 1)
 
-    x = CartesianCoordinates(optimiser._species.coordinates)
+    x = CartesianCoordinates3D(optimiser._species.coordinates)
     s = DICWithConstraints.from_cartesian(x, optimiser._primitives)
     assert len(s) == 3
 
@@ -215,7 +215,7 @@ def test_baker1997_example():
         pic.append(prim.DihedralAngle(*quadruple))
 
     dic = DICWithConstraints.from_cartesian(
-        x=CartesianCoordinates(c2h3f.coordinates),
+        x=CartesianCoordinates3D(c2h3f.coordinates),
         primitives=pic
     )
     assert len(dic) == 9  # Should remove vectors due to symmetry

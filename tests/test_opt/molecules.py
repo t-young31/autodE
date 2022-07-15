@@ -10,7 +10,7 @@ def methane_mol():
                            Atom('H', -0.24562,  0.77207,  0.21720)])
 
 
-def h2():
+def h2_mol():
     return Molecule(name='h2', atoms=[Atom('H'), Atom('H', x=1.5)])
 
 

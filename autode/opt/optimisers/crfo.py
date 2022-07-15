@@ -9,7 +9,7 @@ import numpy as np
 from itertools import combinations
 from autode.log import logger
 from autode.values import GradientRMS
-from autode.opt.coordinates import CartesianCoordinates, DICWithConstraints
+from autode.opt.coordinates import CartesianCoordinates3D, DICWithConstraints
 from autode.opt.coordinates.internals import PIC
 from autode.opt.optimisers.rfo import RFOptimiser
 from autode.opt.optimisers.hessian_update import BFGSUpdate, NullUpdate
@@ -109,7 +109,7 @@ class CRFOptimiser(RFOptimiser):
         if self._species is None:
             raise RuntimeError("Cannot set initial coordinates. No species set")
 
-        cartesian_coords = CartesianCoordinates(self._species.coordinates)
+        cartesian_coords = CartesianCoordinates3D(self._species.coordinates)
         self._coords = DICWithConstraints.from_cartesian(
             x=cartesian_coords,
             primitives=self._primitives
@@ -145,6 +145,9 @@ class CRFOptimiser(RFOptimiser):
                 if angle not in pic:
                     pic.append(angle)
 
+                continue
+
+
         for (o, p) in graph.edges:
             for m in graph.neighbors(o):
                 if m == p:
@@ -156,10 +159,14 @@ class CRFOptimiser(RFOptimiser):
                     if n == o:
                         continue
 
+                    print(m, o, p, n)
+
                     quadruple = (m, o, p, n)
+                    # pic.append(DihedralAngle(m, o, p, n))
                     for (a, b, c, d) in [quadruple, reversed(quadruple)]:
                         dihedral = DihedralAngle(a, b, c, d)
                         pic.append(dihedral)
+                        
 
         logger.info(f"Using {pic.n_constrained} constraints in {len(pic)} "
                     f"primitive internal coordinates")

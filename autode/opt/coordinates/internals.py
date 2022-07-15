@@ -88,7 +88,7 @@ class PIC(list, ABC):
 
     @classmethod
     def from_cartesian(cls,
-                       x:          'autode.opt.cartesian.CartesianCoordinates',
+                       x: 'autode.opt.cartesian.CartesianCoordinates3D',
                        ) -> 'PIC':
         """Construct a complete set of primitive internal coordinates from
         a set of Cartesian coordinates"""
@@ -98,7 +98,7 @@ class PIC(list, ABC):
 
         return pic
 
-    def __call__(self, x: np.ndarray) -> np.ndarray:
+    def __call__(self, x: 'CartesianCoordinates') -> np.ndarray:
         """Populate Primitive-s used in the construction of set"""
 
         q = self._calc_q(x)
@@ -127,25 +127,22 @@ class PIC(list, ABC):
     def _populate_all(self, x: np.ndarray) -> None:
         """Populate primitives from an array of cartesian coordinates"""
 
-    def _calc_B(self, x: np.ndarray) -> None:
+    def _calc_B(self, x: 'CartesianCoordinates') -> None:
         """Calculate the Wilson B matrix"""
 
         if len(self) == 0:
             raise ValueError('Cannot calculate the Wilson B matrix, no '
                              'primitive internal coordinates')
 
-        cart_coords = x.reshape((-1, 3))
-
-        n_atoms, _ = cart_coords.shape
-        B = np.zeros(shape=(len(self), 3 * n_atoms))
+        B = np.zeros(shape=(len(self), 3 * x.n_atoms))
 
         for i, primitive in enumerate(self):
-            for j in range(n_atoms):
+            for j in range(x.n_atoms):
+                for k in x.num_dimensions:
 
-                B[i, 3 * j + 0] = primitive.derivative(j, CartesianComponent.x, x=cart_coords)
-                B[i, 3 * j + 1] = primitive.derivative(j, CartesianComponent.y, x=cart_coords)
-                B[i, 3 * j + 2] = primitive.derivative(j, CartesianComponent.z, x=cart_coords)
-
+                    B[i, 3 * j + k] = primitive.derivative(j,
+                                                           CartesianComponent[k],
+                                                           x=x)
         self._B = B
         return None
 
@@ -166,13 +163,11 @@ class _FunctionOfDistances(PIC):
     def _primitive_type(self) -> Type['_DistanceFunction']:
         """Type of primitive coordinate defining f(r_ij)"""
 
-    def _populate_all(self, x: np.ndarray):
-
-        n_atoms = len(x.flatten()) // 3
+    def _populate_all(self, x: 'CartesianCoordinates'):
 
         # Add all the unique inverse distances (i < j)
-        for i in range(n_atoms):
-            for j in range(i + 1, n_atoms):
+        for i in range(x.n_atoms):
+            for j in range(i + 1, x.n_atoms):
                 self.append(self._primitive_type(i, j))
 
         return None

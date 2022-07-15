@@ -8,7 +8,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 from typing import Optional
 from autode.log import logger
-from autode.opt.coordinates.cartesian import CartesianCoordinates
+from autode.opt.coordinates.cartesian import CartesianCoordinates3D
 from autode.opt.optimisers.base import Optimiser
 
 
@@ -147,7 +147,7 @@ class ArmijoLineSearch(LineSearchOptimiser):
     def _initialise_coordinates(self) -> None:
         """Initialise the coordinates if they are not defined already.
         Defaults to CartesianCoordinates"""
-        self._coords = CartesianCoordinates(self._species.coordinates)
+        self._coords = CartesianCoordinates3D(self._species.coordinates)
         return None
 
     @property

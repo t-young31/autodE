@@ -832,7 +832,7 @@ class Atoms(list):
 
             # Calculate the 0->i atomic vector, which must not have any
             # component in the direction in the normal if the atoms are planar
-            if np.dot(normal_vec, arr[i, :] - x0) > distance_tol:
+            if normal_vec.dot(arr[i, :] - x0) > distance_tol:
                 return False
 
         return True

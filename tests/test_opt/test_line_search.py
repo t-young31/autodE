@@ -5,7 +5,7 @@ from autode.species import Molecule
 from autode.utils import work_in_tmp_dir
 from autode.wrappers.base import Method
 from autode.methods import XTB
-from autode.opt.coordinates.cartesian import CartesianCoordinates
+from autode.opt.coordinates.cartesian import CartesianCoordinates3D
 from autode.opt.optimisers.line_search import ArmijoLineSearch, NullLineSearch, LineSearchOptimiser
 from ..testutils import requires_with_working_xtb_install
 
@@ -39,7 +39,7 @@ class TestSDLineSearch(LineSearchOptimiser):
         pass  # print(self._coords.e)
 
     def _initialise_coordinates(self) -> None:
-        self._coords = CartesianCoordinates(np.array([1.1, 0.2]))
+        self._coords = CartesianCoordinates3D(np.array([1.1, 0.2]))
 
     def _step(self) -> None:
         self._coords = self._coords + self.alpha * self.p
@@ -61,7 +61,7 @@ class TestArmijoLineSearch(ArmijoLineSearch):
         self.energy_grad_func = energy_grad_func
 
     def _initialise_coordinates(self) -> None:
-        self._coords = CartesianCoordinates(np.array([-0.8, 1.0]))
+        self._coords = CartesianCoordinates3D(np.array([-0.8, 1.0]))
 
     def _update_gradient_and_energy(self) -> None:
         return TestSDLineSearch._update_gradient_and_energy(self)
