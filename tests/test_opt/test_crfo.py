@@ -126,7 +126,7 @@ def test_primitive_projection_discard():
     s += np.array([0.03, -0.07, 0.])
 
     def r(_x):
-        return np.linalg.norm(_x[:3] - _x[3:6])
+        return np.linalg.norm(_x[0, :] - _x[1, :])
 
     # Should not change value of the 'removed' coordinate
     assert np.isclose(r(s.to("cartesian")), r_initial, atol=1E-10)

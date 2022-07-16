@@ -164,7 +164,7 @@ class OptCoordinates(ValueArray, ABC):
         if arr is None:
             return True  # None is always valid
 
-        return arr.ndim == 2 and arr.shape[0] == arr.shape[1] == len(self)
+        return arr.ndim == 2 and arr.shape[0] == arr.shape[1] == len(self.flatten())
 
     @abstractmethod
     def _update_g_from_cart_g(self,

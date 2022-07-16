@@ -1,11 +1,11 @@
 import numpy as np
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, List
 from autode.log import logger
 from autode.geom import get_rot_mat_euler
 from autode.values import ValueArray
-from autode.opt.coordinates.base import OptCoordinates
+from autode.opt.coordinates.base import OptCoordinates, CartesianComponent
 from autode.opt.coordinates.dic import DIC
 
 
@@ -25,12 +25,19 @@ def cartesian_coordinates(species: 'autode.species.Species') -> 'CartesianCoordi
     coordinates = species.coordinates
 
     if species.is_planar() and species.n_atoms > 2:
+        logger.info("Species in planar. Using 2D cartesian coordinates")
+
         rot_mat = _rotation_matrix_into_xy_plane(atoms)
+        translation = -np.copy(coordinates[0, :])
+        coordinates += translation
+
         x = CartesianCoordinates2D(coordinates.dot(rot_mat.T)[:, :2])
         x.rev_rotation_matrix = np.linalg.inv(rot_mat)
+        x.rev_translation = -translation
         return x
 
     else:
+        logger.info("Using 3D cartesian coordinates")
         return CartesianCoordinates3D(coordinates)
 
 
@@ -46,11 +53,14 @@ class CartesianCoordinates(OptCoordinates, ABC):  # lgtm [py/missing-equals]
     def n_atoms(self) -> int:
         """Number of atoms that comprise these cartesian coordinates"""
 
-        if self.ndim != 2:
-            raise ValueError("Cannot determine the number of atoms with a flat"
-                             " array of coordinates")
+        return len(self.flatten()) // self.num_dimensions
 
-        return self.shape[0]
+    @property
+    def components(self) -> List[CartesianComponent]:
+        """Cartesian components present in this set"""
+
+        _all = [CartesianComponent.x, CartesianComponent.y, CartesianComponent.z]
+        return _all[:self.num_dimensions]
 
     def __repr__(self):
         return f'Cartesian Coordinates({np.ndarray.__str__(self)} {self.units.name})'
@@ -78,7 +88,7 @@ class CartesianCoordinates(OptCoordinates, ABC):  # lgtm [py/missing-equals]
         Arguments:
             arr: Gradient array
         """
-        self.g = None if arr is None else np.array(arr)
+        self.g = None if arr is None else np.array(arr).reshape(self.shape)
 
     def _update_h_from_cart_h(self,
                               arr: Optional['autode.values.Hessian']
@@ -115,7 +125,7 @@ class CartesianCoordinates(OptCoordinates, ABC):  # lgtm [py/missing-equals]
         logger.info(f'Transforming Cartesian coordinates to {value}')
 
         if value.lower() in ('cart', 'cartesian', 'cartesiancoordinates'):
-            return self
+            return self.reshape((self.n_atoms, self.num_dimensions))
 
         elif value.lower() in ('dic', 'delocalised internal coordinates'):
             return DIC.from_cartesian(self)
@@ -133,7 +143,6 @@ class CartesianCoordinates3D(CartesianCoordinates):
 
     @property
     def num_dimensions(self) -> int:
-        assert self.shape[1] == 3
         return 3
 
 
@@ -144,12 +153,12 @@ class CartesianCoordinates2D(CartesianCoordinates):
         arr = super().__new__(cls, *args, **kwargs)
 
         arr.rev_rotation_matrix = None   # Rotation matrix from the xy plane
+        arr.rev_translation = None       # Reverse translation vector
 
         return arr
 
     @property
     def num_dimensions(self) -> int:
-        assert self.shape[1] == 2
         return 2
 
     def to_3d(self) -> CartesianCoordinates3D:
@@ -165,6 +174,7 @@ class CartesianCoordinates2D(CartesianCoordinates):
         coords3d = np.zeros(shape=(self.n_atoms, 3))
         coords3d[:, :2] = self[:, :]
         coords3d = coords3d.dot(self.rev_rotation_matrix.T)
+        coords3d += self.rev_translation
 
         return CartesianCoordinates3D(coords3d, units=self.units)
 
@@ -176,6 +186,11 @@ def _rotation_matrix_into_xy_plane(atoms: 'autode.atoms.Atoms') -> np.ndarray:
     normal = np.cross(atoms.nvector(0, 1), atoms.nvector(0, 2))
     normal /= np.linalg.norm(normal)
     z_axis = np.array([0., 0., 1.])
+
+    if np.isclose(np.abs(normal.dot(z_axis)), 1):
+        logger.info("Atoms are already in the xy plane - using identity "
+                    "rotation")
+        return np.eye(3)
 
     rot_mat = get_rot_mat_euler(axis=np.cross(normal, z_axis),
                                 theta=np.arccos(np.dot(normal, z_axis)))

@@ -137,7 +137,8 @@ class InverseDistance(_DistanceFunction):
         See Also:
             :py:meth:`Primitive.derivative <Primitive.derivative>`
         """
-
+        x = unflatten_cartesian_coordinates(x)
+        print(x)
         k = int(component)
 
         if i != self.i and i != self.j:
@@ -153,6 +154,7 @@ class InverseDistance(_DistanceFunction):
                  x: 'autode.opt.coordinates.CartesianCoordinates3D'
                  ) -> float:
         """1 / |x_i - x_j| """
+        x = unflatten_cartesian_coordinates(x)
         return 1.0 / np.linalg.norm(x[self.i] - x[self.j])
 
 
@@ -177,6 +179,7 @@ class Distance(_DistanceFunction):
         See Also:
             :py:meth:`Primitive.derivative <Primitive.derivative>`
         """
+        x = unflatten_cartesian_coordinates(x)
         k = int(component)
 
         if i != self.i and i != self.j:
@@ -190,8 +193,8 @@ class Distance(_DistanceFunction):
                  x: 'autode.opt.coordinates.CartesianCoordinates'
                  ) -> float:
         """|x_i - x_j|"""
-        _x = x.reshape((-1, 3))
-        return np.linalg.norm(_x[self.i] - _x[self.j])
+        x = unflatten_cartesian_coordinates(x)
+        return np.linalg.norm(x[self.i, :] - x[self.j, :])
 
     def __repr__(self):
         return f'Distance({self.i}-{self.j})'
@@ -246,6 +249,7 @@ class BondAngle(Primitive):
 
     def __call__(self,
                  x: 'autode.opt.coordinates.CartesianCoordinates') -> float:
+        x = unflatten_cartesian_coordinates(x)
 
         u = x[self.m, :] - x[self.o, :]
         v = x[self.n, :] - x[self.o, :]
@@ -263,6 +267,7 @@ class BondAngle(Primitive):
         if i not in (self.o, self.m, self.n):
             return 0.
 
+        x = unflatten_cartesian_coordinates(x)
         k = int(component)
 
         u = x[self.m, :] - x[self.o, :]
@@ -367,6 +372,7 @@ class DihedralAngle(Primitive):
     def _value(self, x, i=None, component=None, return_derivative=False):
         """Evaluate either the value or the derivative. Shared function
         to reuse local variables"""
+        x = unflatten_cartesian_coordinates(x)
 
         u = x[self.m, :] - x[self.o, :]
         lambda_u = np.linalg.norm(u)
@@ -416,3 +422,13 @@ class DihedralAngle(Primitive):
 
     def __repr__(self):
         return f'Dihedral({self.m}-{self.o}-{self.p}-{self.n})'
+
+
+def unflatten_cartesian_coordinates(x: 'autode.opt.coordinates.CartesianCoordinates'
+                                    ) -> 'autode.opt.coordinates.CartesianCoordinates':
+    """Reshape cartesian coordinates into their 'standard' shape"""
+
+    if x.ndim == 2:  # Already non-flat
+        return x
+
+    return x.reshape((x.n_atoms, x.num_dimensions))

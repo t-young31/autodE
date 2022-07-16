@@ -197,7 +197,7 @@ class CauchyTROptimiser(TrustRegionOptimiser):
         """Initialise a TR optimiser, so it can take the first step"""
 
         if self._coords is None:
-            self._coords = CartesianCoordinates3D(self._species.coordinates)
+            self._coords = CartesianCoordinates3D(self._species.coordinates).flatten()
 
         self._update_gradient_and_energy()
         self._solve_subproblem()
@@ -280,8 +280,6 @@ class DoglegTROptimiser(CauchyTROptimiser):
 class CGSteihaugTROptimiser(TrustRegionOptimiser):
     """Conjugate Gradient Steihaung's Method"""
 
-    coordinate_type = CartesianCoordinates3D
-
     def __init__(self,
                  *args,
                  epsilon: float = 0.001,
@@ -305,7 +303,7 @@ class CGSteihaugTROptimiser(TrustRegionOptimiser):
         """Initialise a TR optimiser, so it can take the first step"""
 
         if self._coords is None:
-            self._coords = self.coordinate_type(self._species.coordinates)
+            self._coords = CartesianCoordinates3D(self._species.coordinates).flatten()
 
         self._update_gradient_and_energy()
         self._solve_subproblem()
@@ -331,7 +329,7 @@ class CGSteihaugTROptimiser(TrustRegionOptimiser):
             (np.ndarray): Step direction (p)
         """
 
-        e, g, h = self._coords.e, self._coords.g, self._coords.h
+        e, g, h = self._coords.e, self._coords.g.flatten(), self._coords.h
         tau_arr, m_arr = np.linspace(0, 10, num=1000), []
 
         for tau in tau_arr:
@@ -359,7 +357,7 @@ class CGSteihaugTROptimiser(TrustRegionOptimiser):
         Solve the subproblem for a direction
         """
         h = self._coords.h
-        z, r = 0.0, np.array(self._coords.g, copy=True)
+        z, r = 0.0, np.array(self._coords.g.flatten(), copy=True)
         d = -r.copy()
 
         if np.linalg.norm(r) < self.epsilon:

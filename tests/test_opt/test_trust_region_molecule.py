@@ -10,12 +10,13 @@ def test_h2o_opt():
 
     mol = Molecule(smiles='O')
 
-    optimiser = CGSteihaugTROptimiser(maxiter=20,
-                                      trust_radius=0.02,
-                                      etol=1E-6,
-                                      gtol=1E-3,
-                                      coords=CartesianCoordinates3D(mol.coordinates)
-                                      )
+    optimiser = CGSteihaugTROptimiser(
+        maxiter=20,
+        trust_radius=0.02,
+        etol=1E-6,
+        gtol=1E-3,
+        coords=CartesianCoordinates3D(mol.coordinates).flatten()
+    )
     optimiser.run(mol, method=XTB())
 
     assert optimiser.converged

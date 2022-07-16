@@ -202,8 +202,8 @@ class DIC(InternalCoordinates):  # lgtm [py/missing-equals]
         s_new = np.array(self, copy=True) + value
 
         # Initialise
-        s_k, x_k = np.array(self, copy=True), self.to("cartesian").copy()
-        x_1 = self.to("cartesian") + np.matmul(self.B_T_inv, value)
+        s_k, x_k = np.array(self, copy=True), self.to("cartesian").flatten()
+        x_1 = self.to("cartesian").flatten() + np.matmul(self.B_T_inv, value)
 
         for i in range(1, _max_back_transform_iterations+1):
 
@@ -214,6 +214,7 @@ class DIC(InternalCoordinates):  # lgtm [py/missing-equals]
                                    'transformation from internal -> carts')
 
             # Rebuild the primitives & DIC from the back-transformed Cartesians
+
             s_k = np.matmul(self.U.T, self.primitives(x_k))
             self.B = np.matmul(self.U.T, self.primitives.B)
             self.B_T_inv = np.linalg.pinv(self.B)
@@ -235,7 +236,7 @@ class DIC(InternalCoordinates):  # lgtm [py/missing-equals]
                 break
 
         self[:] = s_k
-        self._x = x_k
+        self._x = x_k.reshape((x_k.n_atoms, x_k.num_dimensions))
 
         return self
 
@@ -387,7 +388,7 @@ class DICWithConstraints(DIC):
             return True  # None is always valid
 
         n_rows, n_cols = arr.shape
-        return arr.ndim == 2 and n_rows == n_cols == len(self) + self.n_constraints
+        return arr.ndim == 2 and n_rows == n_cols == len(self.flatten()) + self.n_constraints
 
     def set_lagrange_multipliers(self, arr: np.ndarray) -> None:
         """Set the lagrange multipliers: {λ_0, λ_1, ..}"""

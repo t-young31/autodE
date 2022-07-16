@@ -153,8 +153,8 @@ class ArmijoLineSearch(LineSearchOptimiser):
     @property
     def _satisfies_wolfe1(self) -> bool:
         """First Wolfe condition: """
-
-        term_2 = self.alpha * self.beta * np.dot(self._init_coords.g, self.p)
+        g = self._init_coords.g.flatten()
+        term_2 = self.alpha * self.beta * g.dot(self.p.flatten())
         return self._coords.e < self._init_coords.e + term_2
 
     @property
