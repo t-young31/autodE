@@ -62,6 +62,10 @@ class CartesianCoordinates(OptCoordinates, ABC):  # lgtm [py/missing-equals]
         _all = [CartesianComponent.x, CartesianComponent.y, CartesianComponent.z]
         return _all[:self.num_dimensions]
 
+    @abstractmethod
+    def to_3d(self) -> 'CartesianCoordinates':
+        """Convert these cartesian coordinates to 3D"""
+
     def __repr__(self):
         return f'Cartesian Coordinates({np.ndarray.__str__(self)} {self.units.name})'
 
@@ -124,7 +128,7 @@ class CartesianCoordinates(OptCoordinates, ABC):  # lgtm [py/missing-equals]
         """
         logger.info(f'Transforming Cartesian coordinates to {value}')
 
-        if value.lower() in ('cart', 'cartesian', 'cartesiancoordinates'):
+        if value.lower() in ('cart', 'cartesian'):
             return self.reshape((self.n_atoms, self.num_dimensions))
 
         elif value.lower() in ('dic', 'delocalised internal coordinates'):
@@ -144,6 +148,9 @@ class CartesianCoordinates3D(CartesianCoordinates):
     @property
     def num_dimensions(self) -> int:
         return 3
+
+    def to_3d(self) -> 'CartesianCoordinates':
+        return self
 
 
 class CartesianCoordinates2D(CartesianCoordinates):

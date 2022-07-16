@@ -150,7 +150,7 @@ class Optimiser(ABC):
             (autode.exceptions.CalculationException):
         """
         # Calculations need to be performed in cartesian coordinates
-        self._species.coordinates = self._coords.to('cart')
+        self._species.coordinates = self._coords.to('cart').to_3d()
 
         grad = Calculation(name=f'{self._species.name}_opt_{self.iteration}',
                            molecule=self._species,
