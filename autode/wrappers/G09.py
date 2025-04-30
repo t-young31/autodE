@@ -543,11 +543,17 @@ class G09(autode.wrappers.methods.ExternalMethodOEGH):
 
     def coordinates_from(self, calc: "CalculationExecutor") -> Coordinates:
         """Get the final set of coordinates from a G09 output"""
+        return self._coordinates_from(calc, allow_standard_orientation=True)
+
+    @staticmethod
+    def _coordinates_from(
+        calc: "CalculationExecutor", allow_standard_orientation: bool = True
+    ) -> Coordinates:
         coords: List[List[float]] = []
 
         for i, line in enumerate(calc.output.file_lines):
             if "Input orientation" in line or (
-                "Standard orientation" in line and len(coords) == 0
+                allow_standard_orientation and "Standard orientation" in line
             ):
                 coords.clear()
                 xyz_lines = calc.output.file_lines[
@@ -672,9 +678,17 @@ class G09(autode.wrappers.methods.ExternalMethodOEGH):
                 "Not enough elements of the Hessian " "matrix found"
             )
 
+        """
+        NOTE: Can't use 'standard orientation' coordinates as they
+        break the hessian projection
+        """
+        atoms = calc.molecule.atoms.copy()
+        atoms.coordinates = self._coordinates_from(
+            calc, allow_standard_orientation=False
+        )
         return Hessian(
             symm_matrix_from_ltril(hess_values),
-            atoms=self.atoms_from(calc),
+            atoms=atoms,
             functional=calc.input.keywords.functional,
             units="Ha a0^-2",
         ).to("Ha Å^-2")
